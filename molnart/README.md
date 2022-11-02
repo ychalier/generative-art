@@ -1,8 +1,8 @@
 # Molnart
 
-[![](molnart.gif)](index.html)
+[![](molnart.gif)](https://ychalier.github.io/generative-art/molnart/index.html)
 
-[Checkout the demo here.](index.html)
+[Checkout the demo here.](https://ychalier.github.io/generative-art/molnart/index.html)
 
 ## Description
 
