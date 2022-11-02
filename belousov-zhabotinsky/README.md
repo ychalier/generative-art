@@ -2,7 +2,7 @@
 
 [![](belousov-zhabotinsky.gif)](index.html)
 
-[Checkout the demo here.](index.html)
+[Checkout the demo here.](https://ychalier.github.io/generative-art/belousov-zhabotinsky/index.html)
 
 ## Description
 
