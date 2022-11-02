@@ -2,7 +2,7 @@
 
 [![](chaikin.gif)](index.html)
 
-[Checkout the demo here.](index.html)
+[Checkout the demo here.](https://ychalier.github.io/generative-art/chaikin-curves/index.html)
 
 ## Description
 
