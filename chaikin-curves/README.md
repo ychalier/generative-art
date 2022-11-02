@@ -1,6 +1,6 @@
 # Chaikin Curves
 
-[![](chaikin.gif)](index.html)
+[![](chaikin.gif)](https://ychalier.github.io/generative-art/chaikin-curves/index.html)
 
 [Checkout the demo here.](https://ychalier.github.io/generative-art/chaikin-curves/index.html)
 
