@@ -1,6 +1,6 @@
 # Belousov-Zhabotinsky Cellular Automaton
 
-[![](belousov-zhabotinsky.gif)](index.html)
+[![](belousov-zhabotinsky.gif)](https://ychalier.github.io/generative-art/belousov-zhabotinsky/index.html)
 
 [Checkout the demo here.](https://ychalier.github.io/generative-art/belousov-zhabotinsky/index.html)
 
