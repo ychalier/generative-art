@@ -6,7 +6,7 @@ Simple algorithms generating aesthetically pleasing stuff.
 
 Name | Illustration
 ---- | ------------
-[Belousov-Zhabotinsky Cellular Automaton](belousov-zhabotinsky) | [![](belousov-zhabotinsky/belousov-zhabotinsky.gif)](chaikin-curves)
+[Belousov-Zhabotinsky Cellular Automaton](belousov-zhabotinsky) | [![](belousov-zhabotinsky/belousov-zhabotinsky.gif)](belousov-zhabotinsky)
 [Chaikin Curves](chaikin-curves) | [![](chaikin-curves/chaikin.gif)](chaikin-curves)
 [Molnart](molnart) | [![](molnart/molnart.gif)](molnart)
 
