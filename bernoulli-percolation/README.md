@@ -1,8 +1,8 @@
 # Bernoulli Percolation
 
-[![](bernoulli-percolation.gif)](https://ychalier.github.io/generative-art/bernoulli-percolation/index.html)
+[![](bernoulli-percolation.gif)](https://chalier.fr/generative-art/bernoulli-percolation/index.html)
 
-[Checkout the demo here.](https://ychalier.github.io/generative-art/bernoulli-percolation/index.html)
+[Checkout the demo here.](https://chalier.fr/generative-art/bernoulli-percolation/index.html)
 
 ## Description
 

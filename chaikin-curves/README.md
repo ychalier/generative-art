@@ -1,8 +1,8 @@
 # Chaikin Curves
 
-[![](chaikin.gif)](https://ychalier.github.io/generative-art/chaikin-curves/index.html)
+[![](chaikin.gif)](https://chalier.fr/generative-art/chaikin-curves/index.html)
 
-[Checkout the demo here.](https://ychalier.github.io/generative-art/chaikin-curves/index.html)
+[Checkout the demo here.](https://chalier.fr/generative-art/chaikin-curves/index.html)
 
 ## Description
 

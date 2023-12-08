@@ -1,8 +1,8 @@
 # Belousov-Zhabotinsky Cellular Automaton
 
-[![](belousov-zhabotinsky.gif)](https://ychalier.github.io/generative-art/belousov-zhabotinsky/index.html)
+[![](belousov-zhabotinsky.gif)](https://chalier.fr/generative-art/belousov-zhabotinsky/index.html)
 
-[Checkout the demo here.](https://ychalier.github.io/generative-art/belousov-zhabotinsky/index.html)
+[Checkout the demo here.](https://chalier.fr/generative-art/belousov-zhabotinsky/index.html)
 
 ## Description
 
