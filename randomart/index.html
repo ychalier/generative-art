@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf8">
+    <meta name="viewport" content="width=device-width">
+    <title>Random Art</title>
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        #dashboard {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+        }
+        </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="dashboard">
+        <form id="dashboard-form">
+            <input type="range" min="1" max="1920" name="width" value="256" /><br>
+            <input type="range" min="1" max="1920" name="height" value="256" /><br>
+            <input type="range" min="1" max="20" name="depth" value="5" /><br>
+            <textarea name="grammar">E :: triple(C, C, C):1 | mix(C, C, C):1
+C :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):3
+A :: rgb:1 | x:1 | y:1</textarea><br>
+            <button>Generate</button>
+        </form>
+        <button id="button-download">Download</button>
+    </div>
+    <script src="randomart.js"></script>
+</body>
+
+</html>
