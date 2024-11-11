@@ -1,34 +1,25 @@
-const canvas = document.getElementById("canvas");
-const context = canvas.getContext("2d");
+// const maxDepth = 5;
 
-const WIDTH  = 64;
-const HEIGHT = 64;
+// const grammarTextGradient = `
+// E :: triple(C, C, C):1 | mix(C, C, C):1
+// C :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):3
+// A :: rgb:1 | x:1 | y:1
+// `;
 
-canvas.width = WIDTH;
-canvas.height = HEIGHT;
+// const grammarTextGeneral = `
+// E :: triple(C, C, C):1 | sin(C):1
+// C :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):2 | mod(C, C):0.1 | sin(C):3 | cos(C):3 | exp(C):3 | sqrt(C):3 | level(C, C, C):0.1
+// A :: bw:1 | rgb:1 | x:1 | y:1
+// `;
 
-const maxDepth = 5;
+// const grammarInterferences = `
+// E :: triple(C, C, C):1 | mix(C, C, C):1
+// C :: sum(C, C):2 | mult(C, C):2 | A:2 | mix(C, C, C):2 | sin(C):1 | sinbin(C, D):3 | sinbin(A, D):3
+// D :: constant(10):1
+// A :: bw:1 | rgb:1 | x:2 | y:2
+// `;
 
-const grammarTextGradient = `
-E :: triple(C, C, C):1 | mix(C, C, C):1
-C :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):3
-A :: rgb:1 | x:1 | y:1
-`;
-
-const grammarTextGeneral = `
-E :: triple(C, C, C):1 | sin(C):1
-C :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):2 | mod(C, C):0.1 | sin(C):3 | cos(C):3 | exp(C):3 | sqrt(C):3 | level(C, C, C):0.1
-A :: bw:1 | rgb:1 | x:1 | y:1
-`;
-
-const grammarInterferences = `
-E :: triple(C, C, C):1 | mix(C, C, C):1
-C :: sum(C, C):2 | mult(C, C):2 | A:2 | mix(C, C, C):2 | sin(C):1 | sinbin(C, D):3 | sinbin(A, D):3
-D :: constant(10):1
-A :: bw:1 | rgb:1 | x:2 | y:2
-`;
-
-const grammarText = grammarTextGradient;
+// const grammarText = grammarTextGradient;
 
 function nodeConstant(constant) {
     return {
@@ -292,13 +283,13 @@ function parseGrammar(grammarText) {
     return grammar;
 }
 
-function expandGrammar(grammar, key, depth=0) {
+function expandGrammar(grammar, key, depth) {
     // console.log("Generating rule", key, "at depth", depth);
     if (!(key in grammar)) {
         throw new Error(`Missing key ${key} in grammar`);
     }
     let rule;
-    if (depth >= maxDepth) {
+    if (depth <= 0) {
         key = "A";
     }
     const nonce = Math.random();
@@ -319,14 +310,14 @@ function expandGrammar(grammar, key, depth=0) {
     }
     // console.log("Using rule", rule);
     if (typeof(rule[0]) == typeof("A")) {
-        return expandGrammar(grammar, rule[0], depth+1);
+        return expandGrammar(grammar, rule[0], depth-1);
     }
     const args = [];
     if (rule[0] == nodeConstant && rule[1].length == 1 && rule[1][0].match(/^\d(?:\.\d+)?/)) {
         args.push(parseFloat(rule[1][0]));  
     } else if (rule[1] != null) {
         for (let j = 0; j < rule[1].length; j++) {
-            args.push(expandGrammar(grammar, rule[1][j], depth+1));
+            args.push(expandGrammar(grammar, rule[1][j], depth-1));
         }
     }
     const fakeNodeArity = rule[0]().arity;
@@ -336,12 +327,12 @@ function expandGrammar(grammar, key, depth=0) {
     return rule[0](...args);
 }
 
-function getImageData(expr) {
-    const imageData = context.createImageData(WIDTH, HEIGHT);
-    for (let i = 0; i < HEIGHT; i++) {
-        for (let j = 0; j < WIDTH; j++) {
-            const k = (i * WIDTH + j) * 4;
-            const color = expr.eval((j / WIDTH) * 2 - 1, (i / HEIGHT) * 2 - 1);
+function getImageData(context, width, height, expr) {
+    const imageData = context.createImageData(width, height);
+    for (let i = 0; i < height; i++) {
+        for (let j = 0; j < width; j++) {
+            const k = (i * width + j) * 4;
+            const color = expr.eval((j / width) * 2 - 1, (i / height) * 2 - 1);
             imageData.data[k + 0] = (color[0] + 1) * 128;
             imageData.data[k + 1] = (color[1] + 1) * 128;
             imageData.data[k + 2] = (color[2] + 1) * 128;
@@ -352,6 +343,21 @@ function getImageData(expr) {
 }
 
 function main() {
+    const params = new URLSearchParams(window.location.search);
+    const width = params.has("width") ? parseInt(params.get("width")) : 64;
+    const height = params.has("height") ? parseInt(params.get("height")) : 64;
+    const depth = params.has("depth") ? parseInt(params.get("depth")) : 5;
+    const grammarText = params.has("grammar") ? params.get("grammar") : `
+        E :: triple(C, C, C):1 | mix(C, C, C):1
+        C :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):3
+        A :: rgb:1 | x:1 | y:1
+    `;
+
+    document.querySelector("input[name=width]").value = width;
+    document.querySelector("input[name=height]").value = height;
+    document.querySelector("input[name=depth]").value = depth;
+    document.querySelector("textarea[name=grammar]").value = grammarText;
+
     let grammar;
     try {
         grammar = parseGrammar(grammarText);
@@ -365,7 +371,7 @@ function main() {
     }
     let expr;
     try {
-        expr = expandGrammar(grammar, "E");
+        expr = expandGrammar(grammar, "E", depth);
         console.log(expr.toString());
     } catch(err) {
         alert(err);
@@ -374,12 +380,16 @@ function main() {
     if (expr == undefined) {
         return;
     }
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
+    canvas.width = width;
+    canvas.height = height;
     var timeStart;
     function render(timestamp) {
         if (timeStart == undefined) {
             timeStart = timestamp;
         }
-        const imageData = getImageData(expr);
+        const imageData = getImageData(context, width, height, expr);
         context.putImageData(imageData, 0, 0);
         // requestAnimationFrame(render);
     }
