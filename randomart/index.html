@@ -33,8 +33,6 @@
         <form id="dashboard-form">
             <table>
                 <tbody>
-                    <tr><td><label for="input-width">Width</label></td><td><input id="input-width" name="width" type="number" min="1" max="3840" value="64" /></td></tr>
-                    <tr><td><label for="input-height">Height</label></td><td><input id="input-height" name="height" type="number" min="1" max="3840" value="64" /></td></tr>
                     <tr><td><label for="input-depth">Depth</label></td><td><input id="input-depth" name="depth" type="number" min="1" max="20" value="5" /></td></tr>
                     <tr><td><label for="input-grammar">Grammar</label></td><td><textarea id="input-grammar" name="grammar" rows="3" cols="60">E :: triple(C, C, C):1 | mix(C, C, C):1
         C :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):3
@@ -43,6 +41,7 @@
             </table>
             <button>Generate</button>
         </form>
+        <progress id="progress" value="0" min="0" max="10" style="display: none;"></progress>
         <button id="button-download">Download</button>
     </div>
     <script src="randomart.js"></script>
