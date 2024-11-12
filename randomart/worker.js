@@ -21,6 +21,28 @@
 
 // const grammarText = grammarTextGradient;
 
+
+var random = Math.random;
+
+function xoshiro128ss(a, b, c, d) {
+    return function() {
+        let t = b << 9, r = b * 5;
+        r = (r << 7 | r >>> 25) * 9;
+        c ^= a;
+        d ^= b;
+        b ^= c;
+        a ^= d;
+        c ^= t;
+        d = d << 11 | d >>> 21;
+        return (r >>> 0) / 4294967296;
+    }
+}
+
+function setRandomSeed(seed) {
+    const a = seed>>>0;
+    random = xoshiro128ss(a, a * 17, a * 19, a * 21);
+}
+
 function nodeConstant(constant) {
     return {
         arity: 1,
@@ -34,7 +56,7 @@ function nodeConstant(constant) {
 }
 
 function nodeBw() {
-    const a = Math.random() * 2 - 1;
+    const a = random() * 2 - 1;
     return {
         arity: 0,
         toString() {
@@ -47,9 +69,9 @@ function nodeBw() {
 }
 
 function nodeRgb() {
-    const r = Math.random() * 2 - 1;
-    const g = Math.random() * 2 - 1;
-    const b = Math.random() * 2 - 1;
+    const r = random() * 2 - 1;
+    const g = random() * 2 - 1;
+    const b = random() * 2 - 1;
     return {
         arity: 0,
         toString() {
@@ -87,14 +109,14 @@ function nodeUnary(subexpr, label, apply, min=-1, max=1) {
 }
 
 function nodeSin(subexpr) {
-    const phase = Math.random() * Math.PI;
-    const frequency = Math.random() * 5 + 1;
+    const phase = random() * Math.PI;
+    const frequency = random() * 5 + 1;
     return nodeUnary(subexpr, "sin", a => Math.sin(a * frequency + phase));
 }
 
 function nodeCos(subexpr) {
-    const phase = Math.random() * Math.PI;
-    const frequency = Math.random() * 5 + 1;
+    const phase = random() * Math.PI;
+    const frequency = random() * 5 + 1;
     return nodeUnary(subexpr, "sin", a => Math.cos(a * frequency + phase));
 }
 
@@ -172,7 +194,7 @@ function nodeTernary(left, middle, right, label, apply, min=-1, max=1) {
 }
 
 function nodeLevel(left, middle, right) {
-    const threshold = Math.random() * 2 - 1;
+    const threshold = random() * 2 - 1;
     return nodeTernary(left, middle, right, "level", (a, b, c) => a < threshold ? b : c);
 }
 
@@ -292,7 +314,7 @@ function expandGrammar(grammar, key, depth) {
     if (depth <= 0) {
         key = "A";
     }
-    const nonce = Math.random();
+    const nonce = random();
     let totalWeight = 0;
     for (let i = 0; i < grammar[key].length; i++) {
         totalWeight += grammar[key][i][2];
@@ -345,6 +367,7 @@ function getImageData(context, width, height, expr) {
 
 onmessage = (event) => {
     console.log("Received message from main thread:", event.data);
+    setRandomSeed(event.data.seed);
     const grammar = parseGrammar(event.data.grammarText); // TODO: handle errors
     const expr = expandGrammar(grammar, "E", event.data.depth); // TODO: handle errors
     postMessage({type: "expr", expr: expr.toString()});
