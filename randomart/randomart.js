@@ -10,13 +10,20 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
     document.querySelector("input[name=depth]").value = depth;
     document.querySelector("textarea[name=grammar]").value = grammarText;
     
-    document.getElementById("button-share").addEventListener("click", (event) => {
+    document.getElementById("button-share").addEventListener("click", event => {
         const params = new URLSearchParams();
         params.set("depth", depth);
         params.set("seed", seed);
         params.set("grammar", grammarText);
         navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?" + params.toString());
         showToast(event, "link copied to clipboard");
+    });
+
+    document.getElementById("button-download").addEventListener("click", event => {
+        const link = document.createElement("a");
+        link.setAttribute("download", `randomart-${parseInt((new Date()) * 1)}.png`);
+        link.href = document.getElementById("canvas").toDataURL("image/png");
+        link.click();
     });
 
     function showToast(event, message) {
