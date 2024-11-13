@@ -12,6 +12,7 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
     document.querySelector("textarea[name=grammar]").value = grammarText;
 
     var exprString;
+    var blob;
 
     document.getElementById("button-copy").addEventListener("click", event => {
         navigator.clipboard.writeText(exprString == undefined ? "" : exprString);
@@ -29,13 +30,6 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
         }
         navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?" + params.toString());
         showToast(event, "link copied to clipboard");
-    });
-
-    document.getElementById("button-download").addEventListener("click", event => {
-        const link = document.createElement("a");
-        link.setAttribute("download", `randomart-${parseInt((new Date()) * 1)}.png`);
-        link.href = document.getElementById("canvas").toDataURL("image/png");
-        link.click();
     });
 
     function showToast(event, message) {
@@ -57,6 +51,13 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
 
     const canvas = document.getElementById("canvas").transferControlToOffscreen();
 
+    document.getElementById("button-download").addEventListener("click", event => {
+        const link = document.createElement("a");
+        link.setAttribute("download", `randomart-${parseInt((new Date()) * 1)}.png`);
+        link.href = URL.createObjectURL(blob);
+        link.click();   
+    });
+
     let worker = new Worker("worker.js");
 
     worker.onmessage = event => {
@@ -72,6 +73,8 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
                 progress.value = event.data.current;
                 progress.max = event.data.total;
                 progress.style.display = event.data.current == event.data.total ? "none": "unset";
+                blob = event.data.blob;
+                worker.postMessage({type: "next"});
                 break;
         }
     };
@@ -83,7 +86,8 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
         depth: depth,
         seed: seed,
         grammarText: grammarText,
-        exprText: exprText
+        exprText: exprText,
+        type: "start",
     }, [canvas]);
 
     document.getElementById("dashboard-form").addEventListener("submit", event => {
@@ -98,6 +102,7 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
             depth: depth,
             seed: seed,
             grammarText: grammarText,
+            type: "start",
         });
     });
 

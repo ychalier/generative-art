@@ -461,40 +461,49 @@ function parseExpr(exprText) {
 
 var canvas;
 var context;
+var expr;
+var scale;
+var iteration;
+var width;
+var height;
+var steps;
 
 onmessage = (event) => {
-    setRandomSeed(event.data.seed);
-    let expr;
-    if (event.data.exprText != undefined) {
-        expr = parseExpr(event.data.exprText);
-    } else if (event.data.grammarText != undefined && event.data.depth != undefined) {
-        const grammar = parseGrammar(event.data.grammarText); // TODO: handle errors
-        expr = expandGrammar(grammar, "E", event.data.depth); // TODO: handle errors
-    } 
-    if (expr == undefined) {
-        throw new Error("Could not build expression");
+    if (event.data.type == "start") {
+        setRandomSeed(event.data.seed);
+        if (event.data.exprText != undefined) {
+            expr = parseExpr(event.data.exprText);
+        } else if (event.data.grammarText != undefined && event.data.depth != undefined) {
+            const grammar = parseGrammar(event.data.grammarText); // TODO: handle errors
+            expr = expandGrammar(grammar, "E", event.data.depth); // TODO: handle errors
+        } 
+        if (expr == undefined) {
+            throw new Error("Could not build expression");
+        }
+        postMessage({type: "expr", expr: expr.toString()});
+        if (event.data.canvas != undefined) {
+            canvas = event.data.canvas;
+            context = event.data.canvas.getContext("2d");
+        }
+        iteration = 0;
+        width = event.data.width;
+        height = event.data.height;
+        scale = 1 / Math.min(width, height);
+        steps = Math.ceil(-Math.log2(scale));
     }
-    postMessage({type: "expr", expr: expr.toString()});
-    if (event.data.canvas != undefined) {
-        canvas = event.data.canvas;
-        context = event.data.canvas.getContext("2d");
-    }
-    var iteration = 0;
-    var scale = 1 / Math.min(event.data.width, event.data.height);
-    const steps = Math.ceil(-Math.log2(scale));
-    function render() {
+    if (event.data.type == "start" || event.data.type == "next") {
         iteration++;
         scale *= 2;
-        const width = Math.min(event.data.width, Math.ceil(event.data.width * scale));
-        const height = Math.min(event.data.height, Math.ceil(event.data.height * scale));
+        if (scale >= 2) return;
+        const imageWidth = Math.min(width, Math.ceil(width * scale));
+        const imageHeight = Math.min(height, Math.ceil(height * scale));
         console.log(`#${iteration} Rendering size ${width}x${height}`);
-        canvas.width = width;
-        canvas.height = height;
-        const imageData = getImageData(context, width, height, expr);
+        canvas.width = imageWidth;
+        canvas.height = imageHeight;
+        const imageData = getImageData(context, imageWidth, imageHeight, expr);
         context.putImageData(imageData, 0, 0);
-        postMessage({type: "progress", current: iteration, total: steps});
-        if (scale < 1) requestAnimationFrame(render);
+        canvas.convertToBlob().then(blob => {
+            postMessage({type: "progress", current: iteration, total: steps, blob: blob});
+        });
     }
-
-    requestAnimationFrame(render);
 }
