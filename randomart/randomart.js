@@ -9,6 +9,7 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
     const exprText = params.has("expr") ? params.get("expr") : undefined;
 
     document.querySelector("input[name=depth]").value = depth;
+    document.querySelector("input[name=seed]").value = seed;
     document.querySelector("textarea[name=grammar]").value = grammarText;
 
     var exprString;
@@ -19,15 +20,18 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
         showToast(event, "expression copied to clipboard");
     });
 
-    document.getElementById("button-share").addEventListener("click", event => {
+    document.getElementById("button-share-grammar").addEventListener("click", event => {
         const params = new URLSearchParams();
-        if (exprString == undefined) {
-            params.set("depth", depth);
-            params.set("seed", seed);
-            params.set("grammar", grammarText);
-        } else {
-            params.set("expr", exprString);
-        }
+        params.set("depth", depth);
+        params.set("seed", seed);
+        params.set("grammar", grammarText);
+        navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?" + params.toString());
+        showToast(event, "link copied to clipboard");
+    });
+
+    document.getElementById("button-share-expression").addEventListener("click", event => {
+        const params = new URLSearchParams();
+        params.set("expr", exprString);
         navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?" + params.toString());
         showToast(event, "link copied to clipboard");
     });
@@ -51,9 +55,11 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
 
     document.getElementById("button-download").addEventListener("click", event => {
         const link = document.createElement("a");
-        link.setAttribute("download", `randomart-${parseInt((new Date()) * 1)}.png`);
+        const filename = `randomart-${parseInt((new Date()) * 1)}.png`
+        link.setAttribute("download", filename);
         link.href = URL.createObjectURL(blob);
-        link.click();   
+        link.click();
+        showToast(event, `download to ${filename}`);
     });
 
     var worker;
@@ -103,15 +109,25 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
     createWorker();
     startWorker(true);
 
-    document.getElementById("dashboard-form").addEventListener("submit", event => {
-        event.preventDefault();
-        const formData = new FormData(event.target);
-        depth = parseFloat(formData.get("depth"));
-        grammarText = formData.get("grammar");
+    document.getElementById("button-generate").addEventListener("click", event => {
+        depth = parseInt(document.querySelector("input[name=depth]").value);
+        grammarText = document.querySelector("textarea[name=grammar]").value.trim();
         seed = (Math.random()*2**32)>>>0;
+        document.querySelector("input[name=seed]").value = seed;
         worker.terminate();
         createWorker();
         startWorker(false);
+        showToast(event, "started generation");
+    });
+
+    document.getElementById("button-render").addEventListener("click", event => {
+        depth = parseInt(document.querySelector("input[name=depth]").value);
+        grammarText = document.querySelector("textarea[name=grammar]").value.trim();
+        seed = parseInt(document.querySelector("input[name=seed]").value);
+        worker.terminate();
+        createWorker();
+        startWorker(false);
+        showToast(event, "started rendering");
     });
 
 });

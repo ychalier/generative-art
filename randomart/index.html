@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf8">
     <meta name="viewport" content="width=device-width">
-    <title>Random Art</title>
+    <title>randomart</title>
     <style>
         html,
         body {
@@ -35,25 +35,28 @@
             transform: translate(-50%, -120%);
             overflow: hidden;
         }
-        </style>
+    </style>
 </head>
 
 <body>
     <canvas id="canvas"></canvas>
     <div id="dashboard">
-        <form id="dashboard-form">
-            <table>
-                <tbody>
-                    <tr><td><label for="input-depth">Depth</label></td><td><input id="input-depth" name="depth" type="number" min="1" max="20" value="5" /></td></tr>
-                    <tr><td><label for="input-grammar">Grammar</label></td><td><textarea id="input-grammar" name="grammar" rows="3" cols="60"></textarea></td></tr>
-                </tbody>
-            </table>
-            <button>Generate</button>
-        </form>
+        <table>
+            <tbody>
+                <tr><td><label for="input-depth">depth</label></td><td><input id="input-depth" name="depth" type="number" min="1" max="20" value="5" /></td></tr>
+                <tr><td><label for="input-seed">seed</label></td><td><input id="input-seed" name="seed" type="number" min="0" max="4294967296" value="0" /></td></tr>
+                <tr><td><label for="input-grammar">grammar</label></td><td><textarea id="input-grammar" name="grammar" rows="3" cols="60"></textarea></td></tr>
+            </tbody>
+        </table>
         <progress id="progress" value="0" min="0" max="10" style="display: none;"></progress>
-        <button id="button-copy">Copy</button>
-        <button id="button-share">Share</button>
-        <button id="button-download">Download</button>
+        <div>
+            <button id="button-generate" title="change seed, generate an new expression and render it">generate</button>
+            <button id="button-render" title="keep seed, generate expression and render it">render</button>
+            <button id="button-copy" title="copy expression to clipboard">copy</button>
+            <button id="button-share-grammar" title="copy shareable link to clipboard">share grammar</button>
+            <button id="button-share-expression" title="copy shareable link to clipboard">share expression</button>
+            <button id="button-download" title="download canvas as png">download</button>
+        </div>
     </div>
     <script src="randomart.js"></script>
 </body>
