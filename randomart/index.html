@@ -6,57 +6,52 @@
     <meta charset="utf8">
     <meta name="viewport" content="width=device-width">
     <title>randomart</title>
-    <style>
-        html,
-        body {
-            padding: 0;
-            margin: 0;
-        }
-        #canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-        }
-        #dashboard {
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-        }
-        .toast {
-            position: fixed;
-            z-index: 1;
-            border: 1px solid black;
-            background: white;
-            pointer-events: none;
-            font-size: small;
-            padding: 1px;
-            transform: translate(-50%, -120%);
-            overflow: hidden;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css"/>
 </head>
 
 <body>
     <canvas id="canvas"></canvas>
     <div id="dashboard">
-        <table>
-            <tbody>
-                <tr><td><label for="input-depth">depth</label></td><td><input id="input-depth" name="depth" type="number" min="1" max="20" value="5" /></td></tr>
-                <tr><td><label for="input-seed">seed</label></td><td><input id="input-seed" name="seed" type="number" min="0" max="4294967296" value="0" /></td></tr>
-                <tr><td><label for="input-grammar">grammar</label></td><td><textarea id="input-grammar" name="grammar" rows="3" cols="60"></textarea></td></tr>
-            </tbody>
-        </table>
-        <progress id="progress" value="0" min="0" max="10" style="display: none;"></progress>
+        <div style="display: flex; gap: .4rem;">
+            <div>
+                <label for="input-depth">depth</label>
+                <input id="input-depth" name="depth" type="number" min="1" max="20" value="5" />
+            </div>
+            <div>
+                <label for="input-seed">seed</label>
+                <input id="input-seed" name="seed" type="number" min="0" max="4294967296" value="0" />
+            </div>
+        </div>
+        <label for="input-grammar">grammar</label>
+        <textarea id="input-grammar" name="grammar" rows="6"></textarea>
         <div>
+            <span class="preset-label">presets:</span>
+            <span class="preset-link" onclick="loadPreset('default')">default</span>
+            <span class="preset-link" onclick="loadPreset('waves')">waves</span>
+            <span class="preset-link" onclick="loadPreset('gradients')">gradients</span>
+        </div>
+        <p>
+            <b>Instructions.</b> First rule must be named <code>E</code>. There
+            should be a rule named <code>A</code> containing terminal nodes only.
+            Possible nodes are: <code>x</code>, <code>y</code>, <code>bw</code>
+            (random 1d value), <code>rgb</code> (random 3d value), <code>sin(A)</code>,
+            <code>cos(A)</code>, <code>exp(A)</code>, <code>sqrt(A)</code>,
+            <code>sum(A, B)</code>, <code>mult(A, B)</code>, <code>mod(A, B)</code>,
+            <code>triple(A, B, C)</code> (build 3d from 3 components),
+            <code>mix(A, B, C)</code> (blend first two channels, third channel
+            determines the balance), <code>level(A, B, C)</code> (yields second
+            or third channel depending on a random threshold on first channel).
+        </p>
+        <div id="buttons">
             <button id="button-generate" title="change seed, generate an new expression and render it">generate</button>
             <button id="button-render" title="keep seed, generate expression and render it">render</button>
             <button id="button-copy" title="copy expression to clipboard">copy</button>
+            <button id="button-download" title="download canvas as png">download</button>
             <button id="button-share-grammar" title="copy shareable link to clipboard">share grammar</button>
             <button id="button-share-expression" title="copy shareable link to clipboard">share expression</button>
-            <button id="button-download" title="download canvas as png">download</button>
         </div>
+        <progress id="progress" value="0" min="0" max="10" style="display: none; width: 100%"></progress>
+        <span id="size"></span>
     </div>
     <script src="randomart.js"></script>
 </body>

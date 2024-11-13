@@ -1,0 +1,136 @@
+* {
+    box-sizing: border-box;
+    font-family: monospace;
+}
+
+html,
+body {
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    cursor: none;
+}
+
+body.show-cursor {
+    cursor: unset;
+}
+
+#canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+#dashboard {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 300px;
+    background: #101010;
+    border-right: 2px solid black;
+    padding: .4rem;
+    opacity: 0;
+}
+
+body.show-cursor #dashboard,
+#dashboard:active,
+#dashboard:focus,
+#dashboard:hover {
+    opacity: 1;
+}
+
+label {
+    display: inline-block;
+    color: white;
+}
+
+input {
+    display: block;
+    border: 1px solid #444;
+    padding: .4rem;
+    font-family: inherit;
+    background: #202020;
+    color: white;
+    margin-bottom: .4rem;
+}
+
+textarea {
+    display: block;
+    background: #202020;
+    color: white;
+    padding: .4rem;
+    margin: 0 0 .4rem 0;
+    resize: vertical;
+    width: 100%;
+    border: 1px solid #444;
+}
+
+.toast {
+    position: fixed;
+    z-index: 1;
+    border: 1px solid black;
+    background: white;
+    pointer-events: none;
+    font-size: small;
+    padding: 1px;
+    transform: translate(0, -100%);
+    overflow: hidden;
+}
+
+#buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    max-width: 200px;
+    margin-top: .8rem;
+}
+
+button {
+    background: #202020;
+    color: white;
+    border: 1px solid #444;
+    font-family: inherit;
+    cursor: pointer;
+    padding: .4rem;
+}
+
+button:hover {
+    background: #ddd;
+    color: black;
+}
+
+p {
+    color: #aaa;
+    font-size: small;
+    line-height: 1.25;
+}
+
+code {
+    background: #333;
+    color: #ccc;
+}
+
+.preset-label {
+    color: #eee;
+    font-weight: bold;
+}
+
+.preset-link {
+    color: #eee;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.preset-link:hover {
+    color: #478be4;
+}
+
+#size {
+    font-size: smaller;
+    color: #aaa;
+}

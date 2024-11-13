@@ -503,7 +503,8 @@ onmessage = (event) => {
         const imageData = getImageData(context, imageWidth, imageHeight, expr);
         context.putImageData(imageData, 0, 0);
         canvas.convertToBlob().then(blob => {
-            postMessage({type: "progress", current: iteration, total: steps, blob: blob});
+            postMessage({type: "progress", current: iteration, total: steps,
+                blob: blob, width: imageWidth, height: imageHeight});
         });
     }
 }
