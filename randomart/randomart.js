@@ -1,20 +1,32 @@
 window.addEventListener("load", () => {
     const params = new URLSearchParams(window.location.search);
-    const depth = params.has("depth") ? parseInt(params.get("depth")) : 5;
-    const seed = (params.has("seed") && params.get("seed").trim() != "") ? parseInt(params.get("seed")) : (Math.random()*2**32)>>>0;
-    const grammarText = params.has("grammar") ? params.get("grammar") : `E :: triple(C, C, C):1 | mix(C, C, C):1
+    var seed = (params.has("seed") && params.get("seed").trim() != "") ? parseInt(params.get("seed")) : (Math.random()*2**32)>>>0;
+    var depth = params.has("depth") ? parseInt(params.get("depth")) : 5;
+    var grammarText = params.has("grammar") ? params.get("grammar") : `E :: triple(C, C, C):1 | mix(C, C, C):1
 C :: sum(C, C):2 | mult(C, C):2 | A:2 | mix(C, C, C):2 | sin(C):1 | sinbin(C, D):3 | sinbin(A, D):3
 D :: constant(10):1
 A :: bw:1 | rgb:1 | x:2 | y:2`;
-    
+    const exprText = params.has("expr") ? params.get("expr") : undefined;
+
     document.querySelector("input[name=depth]").value = depth;
     document.querySelector("textarea[name=grammar]").value = grammarText;
-    
+
+    var exprString;
+
+    document.getElementById("button-copy").addEventListener("click", event => {
+        navigator.clipboard.writeText(exprString == undefined ? "" : exprString);
+        showToast(event, "expression copied to clipboard");
+    });
+
     document.getElementById("button-share").addEventListener("click", event => {
         const params = new URLSearchParams();
-        params.set("depth", depth);
-        params.set("seed", seed);
-        params.set("grammar", grammarText);
+        if (exprString == undefined) {
+            params.set("depth", depth);
+            params.set("seed", seed);
+            params.set("grammar", grammarText);
+        } else {
+            params.set("expr", exprString);
+        }
         navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?" + params.toString());
         showToast(event, "link copied to clipboard");
     });
@@ -41,16 +53,19 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
             window.removeEventListener("mousemove", onMouseMove);
             document.body.removeChild(toast);
         }, 700);
-    }    
+    }
 
     const canvas = document.getElementById("canvas").transferControlToOffscreen();
-    
+
     let worker = new Worker("worker.js");
-    
+
     worker.onmessage = event => {
         switch(event.data.type) {
             case "expr":
-                console.log(event.data.expr);
+                exprString = event.data.expr;
+                const url = new URL(location.protocol + "//" + location.host + location.pathname + "?");
+                url.searchParams.set("expr", exprString);
+                window.history.replaceState("", "", url);
                 break;
             case "progress":
                 const progress = document.getElementById("progress");
@@ -67,7 +82,23 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
         height: window.innerHeight,
         depth: depth,
         seed: seed,
-        grammarText: grammarText
+        grammarText: grammarText,
+        exprText: exprText
     }, [canvas]);
+
+    document.getElementById("dashboard-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        depth = parseFloat(formData.get("depth"));
+        grammarText = formData.get("grammar");
+        seed = (Math.random()*2**32)>>>0;
+        worker.postMessage({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            depth: depth,
+            seed: seed,
+            grammarText: grammarText,
+        });
+    });
 
 });

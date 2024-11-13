@@ -43,20 +43,8 @@ function setRandomSeed(seed) {
     random = xoshiro128ss(a, a * 17, a * 19, a * 21);
 }
 
-function nodeConstant(constant) {
-    return {
-        arity: 1,
-        toString() {
-            return `${constant}`;
-        },
-        eval(x, y) {
-            return [constant, constant, constant];
-        }
-    }
-}
-
-function nodeBw() {
-    const a = random() * 2 - 1;
+function nodeBw(forcedA) {
+    const a = forcedA == undefined ? random() * 2 - 1 : forcedA;
     return {
         arity: 0,
         toString() {
@@ -68,14 +56,26 @@ function nodeBw() {
     }
 }
 
-function nodeRgb() {
-    const r = random() * 2 - 1;
-    const g = random() * 2 - 1;
-    const b = random() * 2 - 1;
+function nodeConstant(a) {
+    return {
+        arity: 1,
+        toString() {
+            return `${a}`;
+        },
+        eval(x, y) {
+            return [a, a, a];
+        }
+    }
+}
+
+function nodeRgb(forcedR, forcedG, forcedB) {
+    const r = forcedR == undefined ? random() * 2 - 1 : forcedR;
+    const g = forcedG == undefined ? random() * 2 - 1 : forcedG;
+    const b = forcedB == undefined ? random() * 2 - 1 : forcedB;
     return {
         arity: 0,
         toString() {
-            return `(${r}, ${g}, ${b})`;
+            return `rgb(${r}, ${g}, ${b})`;
         },
         eval(x, y) {
             return [r, g, b];
@@ -91,11 +91,16 @@ function nodeY() {
     return {arity: 0, toString() {return `y`;}, eval(x, y, t) {return [y, y, y];}}
 }
 
-function nodeUnary(subexpr, label, apply, min=-1, max=1) {
+function nodeUnary(subexpr, label, apply, min=-1, max=1, params=[]) {
     return {
         arity: 1,
         toString() {
-            return `${label}(${subexpr.toString()})`;
+            if (params.length == 0) return `${label}(${subexpr.toString()})`;
+            const argString = [subexpr.toString()];
+            for (const param of params) {
+                argString.push(param.toString());
+            }
+            return `${label}(${argString.join(", ")})`;
         },
         eval(x, y) {
             const a = subexpr.eval(x, y);
@@ -108,16 +113,16 @@ function nodeUnary(subexpr, label, apply, min=-1, max=1) {
     }
 }
 
-function nodeSin(subexpr) {
-    const phase = random() * Math.PI;
-    const frequency = random() * 5 + 1;
-    return nodeUnary(subexpr, "sin", a => Math.sin(a * frequency + phase));
+function nodeSin(subexpr, forcedPhase, forcedFrequency) {
+    const phase = forcedPhase == undefined ? random() * Math.PI : forcedPhase;
+    const frequency = forcedFrequency == undefined ? random() * 5 + 1 : forcedFrequency;
+    return nodeUnary(subexpr, "sin", a => Math.sin(a * frequency + phase), -1, 1, [phase, frequency]);
 }
 
-function nodeCos(subexpr) {
-    const phase = random() * Math.PI;
-    const frequency = random() * 5 + 1;
-    return nodeUnary(subexpr, "sin", a => Math.cos(a * frequency + phase));
+function nodeCos(subexpr, forcedPhase, forcedFrequency) {
+    const phase = forcedPhase == undefined ? random() * Math.PI : forcedPhase;
+    const frequency = forcedFrequency == undefined ? random() * 5 + 1 : forcedFrequency;
+    return nodeUnary(subexpr, "cos", a => Math.cos(a * frequency + phase), -1, 1, [phase, frequency]);
 }
 
 function nodeExp(subexpr) {
@@ -159,14 +164,14 @@ function nodeMod(left, right) {
 }
 
 function nodeSinBin(left, right) {
-    return nodeBinary(left, right, "sin", (a, b) => Math.sin(a * b));
+    return nodeBinary(left, right, "sinBin", (a, b) => Math.sin(a * b));
 }
 
 function nodeTriple(first, second, third) {
     return {
         arity: 3,
         toString() {
-            return `(${first}, ${second}, ${third})`;
+            return `triple(${first}, ${second}, ${third})`;
         },
         eval(x, y, t) {
             return [first.eval(x, y)[0], second.eval(x, y)[1], third.eval(x, y)[2]];
@@ -174,11 +179,16 @@ function nodeTriple(first, second, third) {
     }
 }
 
-function nodeTernary(left, middle, right, label, apply, min=-1, max=1) {
+function nodeTernary(left, middle, right, label, apply, min=-1, max=1, params=[]) {
     return {
         arity: 3,
         toString() {
-            return `${label}(${left.toString()}, ${middle.toString()}, ${right.toString()})`;
+            if (params.length == 0) return `${label}(${left.toString()}, ${middle.toString()}, ${right.toString()})`;
+            const argString = [left.toString(), middle.toString(), right.toString()];
+            for (const param of params) {
+                argString.push(param.toString());
+            }
+            return `${label}(${argString.join(", ")})`;
         },
         eval(x, y, t) {
             const a = left.eval(x, y);
@@ -193,9 +203,9 @@ function nodeTernary(left, middle, right, label, apply, min=-1, max=1) {
     }
 }
 
-function nodeLevel(left, middle, right) {
-    const threshold = random() * 2 - 1;
-    return nodeTernary(left, middle, right, "level", (a, b, c) => a < threshold ? b : c);
+function nodeLevel(left, middle, right, forcedThreshold) {
+    const threshold = forcedThreshold == undefined ? random() * 2 - 1 : forcedThreshold;
+    return nodeTernary(left, middle, right, "level", (a, b, c) => a < threshold ? b : c, -1, 1, [threshold]);
 }
 
 function nodeMix(left, middle, right) {
@@ -267,14 +277,14 @@ function parseGrammar(grammarText) {
                 case "bw":
                     ruleNode = nodeBw;
                     break;
+                case "constant":
+                    ruleNode = nodeConstant;
+                    break;
                 case "x":
                     ruleNode = nodeX;
                     break;
                 case "y":
                     ruleNode = nodeY;
-                    break;
-                case "constant":
-                    ruleNode = nodeConstant;
                     break;
                 case "sinbin":
                     ruleNode = nodeSinBin;
@@ -335,8 +345,10 @@ function expandGrammar(grammar, key, depth) {
         return expandGrammar(grammar, rule[0], depth-1);
     }
     const args = [];
-    if (rule[0] == nodeConstant && rule[1].length == 1 && rule[1][0].match(/^\d(?:\.\d+)?/)) {
-        args.push(parseFloat(rule[1][0]));  
+    if (rule[0] == nodeBw && rule[1] == null) {
+        //pass
+    } else if ((rule[0] == nodeConstant || rule[0] == nodeBw) && rule[1].length == 1 && rule[1][0].match(/^\d(?:\.\d+)?/)) {
+        args.push(parseFloat(rule[1][0]));
     } else if (rule[1] != null) {
         for (let j = 0; j < rule[1].length; j++) {
             args.push(expandGrammar(grammar, rule[1][j], depth-1));
@@ -364,14 +376,109 @@ function getImageData(context, width, height, expr) {
     return imageData;
 }
 
+function ravelNode(bwNode) {
+    return bwNode.eval(0, 0)[0];
+}
+
+function parseExpr(exprText) {
+    // console.log("Parsing", exprText);
+    if (exprText == "") {
+        return null;
+    }
+    const nodeName = exprText.match(/^[^\(]+/)[0];
+    if (nodeName.length == exprText.length) {
+        switch(nodeName) {
+            case "x":
+                return nodeX();
+            case "y":
+                return nodeY();
+            default:
+                return nodeBw(parseFloat(nodeName));
+        }
+    }
+    if (exprText.charAt(nodeName.length) != "(") {
+        throw new Error(`Invalid character '${exprText.charAt(nodeName.length)}', expected '('`)
+    }
+    const args = [];
+    let start = nodeName.length + 1;
+    let end = start;
+    while (start < exprText.length) {
+        let depth = 0;
+        for (let i = start; i < exprText.length; i++) {
+            const c = exprText.charAt(i);
+            if (c == "(") {
+                depth++;
+            } else if (c == ")") {
+                depth--;
+                if (i == exprText.length - 1) {
+                    end = i;
+                }
+            } else if (c == "," && depth == 0) {
+                end = i;
+                break;
+            }
+        }
+        args.push(parseExpr(exprText.substring(start, end).trim()));
+        start = end + 1;
+    }
+    switch(nodeName) {
+        case "rgb":
+            return nodeRgb(ravelNode(args[0]), ravelNode(args[1]), ravelNode(args[2]));
+        case "sin":
+        case "cos":
+            const sinArgs = [args[0]];
+            if (args.length > 1) sinArgs.push(ravelNode(args[1]));
+            if (args.length > 2) sinArgs.push(ravelNode(args[2]));
+            if (nodeName == "sin") {
+                return nodeSin(...sinArgs);
+            } else {
+                return nodeCos(...sinArgs);
+            }
+        case "exp":
+            return nodeExp(...args);
+        case "sqrt":
+            return nodeSqrt(...args);
+        case "sum":
+            return nodeSum(...args);
+        case "mult":
+            return nodeMult(...args);
+        case "mod":
+            return nodeMod(...args);
+        case "sinBin":
+            return nodeSinBin(...args);
+        case "triple":
+            return nodeTriple(...args);
+        case "level":
+            const levelArgs = [args[0], args[1], args[2]];
+            if (args.length > 3) levelArgs.push(ravelNode(args[3]));
+            return nodeLevel(...levelArgs);
+        case "mix":
+            return nodeMix(...args);
+        default:
+            throw new Error(`Unknown node name ${nodeName}`);
+    }
+}
+
+var canvas;
+var context;
 
 onmessage = (event) => {
-    console.log("Received message from main thread:", event.data);
     setRandomSeed(event.data.seed);
-    const grammar = parseGrammar(event.data.grammarText); // TODO: handle errors
-    const expr = expandGrammar(grammar, "E", event.data.depth); // TODO: handle errors
+    let expr;
+    if (event.data.exprText != undefined) {
+        expr = parseExpr(event.data.exprText);
+    } else if (event.data.grammarText != undefined && event.data.depth != undefined) {
+        const grammar = parseGrammar(event.data.grammarText); // TODO: handle errors
+        expr = expandGrammar(grammar, "E", event.data.depth); // TODO: handle errors
+    } 
+    if (expr == undefined) {
+        throw new Error("Could not build expression");
+    }
     postMessage({type: "expr", expr: expr.toString()});
-    const context = event.data.canvas.getContext("2d");
+    if (event.data.canvas != undefined) {
+        canvas = event.data.canvas;
+        context = event.data.canvas.getContext("2d");
+    }
     var iteration = 0;
     var scale = 1 / Math.min(event.data.width, event.data.height);
     const steps = Math.ceil(-Math.log2(scale));
@@ -381,8 +488,8 @@ onmessage = (event) => {
         const width = Math.min(event.data.width, Math.ceil(event.data.width * scale));
         const height = Math.min(event.data.height, Math.ceil(event.data.height * scale));
         console.log(`#${iteration} Rendering size ${width}x${height}`);
-        event.data.canvas.width = width;
-        event.data.canvas.height = height;
+        canvas.width = width;
+        canvas.height = height;
         const imageData = getImageData(context, width, height, expr);
         context.putImageData(imageData, 0, 0);
         postMessage({type: "progress", current: iteration, total: steps});
