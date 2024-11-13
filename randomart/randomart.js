@@ -49,8 +49,6 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
         }, 700);
     }
 
-    const canvas = document.getElementById("canvas").transferControlToOffscreen();
-
     document.getElementById("button-download").addEventListener("click", event => {
         const link = document.createElement("a");
         link.setAttribute("download", `randomart-${parseInt((new Date()) * 1)}.png`);
@@ -58,37 +56,52 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
         link.click();   
     });
 
-    let worker = new Worker("worker.js");
+    var worker;
+    
+    function createWorker() {
+        worker = new Worker("worker.js");
+        worker.onmessage = event => {
+            switch(event.data.type) {
+                case "expr":
+                    exprString = event.data.expr;
+                    const url = new URL(location.protocol + "//" + location.host + location.pathname + "?");
+                    url.searchParams.set("expr", exprString);
+                    window.history.replaceState("", "", url);
+                    break;
+                case "progress":
+                    const progress = document.getElementById("progress");
+                    progress.value = event.data.current;
+                    progress.max = event.data.total;
+                    progress.style.display = event.data.current == event.data.total ? "none": "unset";
+                    blob = event.data.blob;
+                    worker.postMessage({type: "next"});
+                    break;
+            }
+        };
+    }
 
-    worker.onmessage = event => {
-        switch(event.data.type) {
-            case "expr":
-                exprString = event.data.expr;
-                const url = new URL(location.protocol + "//" + location.host + location.pathname + "?");
-                url.searchParams.set("expr", exprString);
-                window.history.replaceState("", "", url);
-                break;
-            case "progress":
-                const progress = document.getElementById("progress");
-                progress.value = event.data.current;
-                progress.max = event.data.total;
-                progress.style.display = event.data.current == event.data.total ? "none": "unset";
-                blob = event.data.blob;
-                worker.postMessage({type: "next"});
-                break;
+    function startWorker(useExprText) {
+        const domCanvas = document.createElement("canvas");
+        domCanvas.setAttribute("id", "canvas");
+        document.getElementById("canvas").replaceWith(domCanvas);
+        const canvas = document.getElementById("canvas").transferControlToOffscreen();
+        const args = {
+            canvas: canvas,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            depth: depth,
+            seed: seed,
+            grammarText: grammarText,
+            type: "start",
+        };
+        if (useExprText) {
+            args.exprText = exprText;
         }
-    };
+        worker.postMessage(args, [canvas]);
+    }
 
-    worker.postMessage({
-        canvas: canvas,
-        width: window.innerWidth,
-        height: window.innerHeight,
-        depth: depth,
-        seed: seed,
-        grammarText: grammarText,
-        exprText: exprText,
-        type: "start",
-    }, [canvas]);
+    createWorker();
+    startWorker(true);
 
     document.getElementById("dashboard-form").addEventListener("submit", event => {
         event.preventDefault();
@@ -96,14 +109,9 @@ A :: bw:1 | rgb:1 | x:2 | y:2`;
         depth = parseFloat(formData.get("depth"));
         grammarText = formData.get("grammar");
         seed = (Math.random()*2**32)>>>0;
-        worker.postMessage({
-            width: window.innerWidth,
-            height: window.innerHeight,
-            depth: depth,
-            seed: seed,
-            grammarText: grammarText,
-            type: "start",
-        });
+        worker.terminate();
+        createWorker();
+        startWorker(false);
     });
 
 });
