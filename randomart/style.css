@@ -58,7 +58,7 @@ body.show-cursor {
     background: var(--background-primary);
     box-shadow: 0 0 4px black;
     padding: .4rem;
-    opacity: 1;
+    opacity: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
