@@ -429,6 +429,7 @@ var height;
 const steps = 8;
 var pixels;
 var step;
+var timeStart;
 
 onmessage = (event) => {
     if (event.data.type == "start") {
@@ -459,6 +460,7 @@ onmessage = (event) => {
         }
         step = 2 ** (steps - 1);
         iteration = 0;
+        timeStart = new Date();
     }
     if (event.data.type == "start" || event.data.type == "next") {
         if (step < 1) return;
@@ -484,7 +486,8 @@ onmessage = (event) => {
         context.putImageData(imageData, 0, 0);
         canvas.convertToBlob().then(blob => {
             postMessage({type: "progress", current: iteration, total: steps,
-                blob: blob, width: imageWidth, height: imageHeight});
+                blob: blob, width: imageWidth, height: imageHeight,
+                elapsed: ((new Date()) - timeStart) / 1000});
         });
         step /= 2;
     }

@@ -12,47 +12,58 @@
 <body>
     <canvas id="canvas"></canvas>
     <div id="dashboard">
-        <div style="display: flex; gap: .4rem;">
-            <div>
-                <label for="input-depth">depth</label>
-                <input id="input-depth" name="depth" type="number" min="1" max="20" value="5" />
-            </div>
-            <div>
-                <label for="input-seed">seed</label>
-                <input id="input-seed" name="seed" type="number" min="0" max="4294967296" value="0" />
-            </div>
-        </div>
-        <label for="input-grammar">grammar</label>
-        <textarea id="input-grammar" name="grammar" rows="6"></textarea>
         <div>
-            <span class="preset-label">presets:</span>
-            <span class="preset-link" onclick="loadPreset('default')">default</span>
-            <span class="preset-link" onclick="loadPreset('all')">all</span>
-            <span class="preset-link" onclick="loadPreset('waves')">waves</span>
-            <span class="preset-link" onclick="loadPreset('gradients')">gradients</span>
+            <div class="row">
+                <div>
+                    <label for="input-depth">depth</label>
+                    <input id="input-depth" name="depth" type="number" min="1" max="20" value="5" size="4"  />
+                </div>
+                <div>
+                    <label for="input-seed">seed</label>
+                    <input id="input-seed" name="seed" type="number" min="0" max="4294967296" value="0" size="12" />
+                </div>
+            </div>
+            <label for="input-grammar">grammar</label>
+            <textarea id="input-grammar" name="grammar" rows="6"></textarea>
+            <div>
+                <span class="preset-label">presets:</span>
+                <span class="preset-link" onclick="loadPreset('default')">default</span>
+                <span class="preset-link" onclick="loadPreset('all')">all</span>
+                <span class="preset-link" onclick="loadPreset('waves')">waves</span>
+                <span class="preset-link" onclick="loadPreset('gradients')">gradients</span>
+            </div>
+            <details id="instructions">
+                <summary>instructions</summary>
+                <div>
+                    First rule must be named <code>E</code>. There
+                    should be a rule named <code>A</code> containing terminal nodes only.
+                    Possible nodes are: <code>x</code>, <code>y</code>, <code>bw</code>
+                    (random 1d value), <code>rgb</code> (random 3d value), <code>sin(A)</code>,
+                    <code>cos(A)</code>, <code>exp(A)</code>, <code>sqrt(A)</code>,
+                    <code>sum(A, B)</code>, <code>mult(A, B)</code>, <code>mod(A, B)</code>,
+                    <code>triple(A, B, C)</code> (build 3d from 3 components),
+                    <code>mix(A, B, C)</code> (blend first two channels, third channel
+                    determines the balance), <code>level(A, B, C)</code> (yields second
+                    or third channel depending on a random threshold on first channel).
+                </div>
+            </details>
+            <div id="buttons">
+                <button id="button-generate" title="change seed, generate an new expression and render it">generate</button>
+                <button id="button-render" title="keep seed, generate expression and render it">render</button>
+                <button id="button-download" title="download canvas as png">download</button>
+                <button id="button-source" title="copy shareable link to clipboard">share source</button>
+                <button id="button-share" title="copy shareable link to clipboard">share expression</button>
+                <button id="button-copy" title="copy expression to clipboard">copy expression</button>
+            </div>
         </div>
-        <p>
-            <b>Instructions.</b> First rule must be named <code>E</code>. There
-            should be a rule named <code>A</code> containing terminal nodes only.
-            Possible nodes are: <code>x</code>, <code>y</code>, <code>bw</code>
-            (random 1d value), <code>rgb</code> (random 3d value), <code>sin(A)</code>,
-            <code>cos(A)</code>, <code>exp(A)</code>, <code>sqrt(A)</code>,
-            <code>sum(A, B)</code>, <code>mult(A, B)</code>, <code>mod(A, B)</code>,
-            <code>triple(A, B, C)</code> (build 3d from 3 components),
-            <code>mix(A, B, C)</code> (blend first two channels, third channel
-            determines the balance), <code>level(A, B, C)</code> (yields second
-            or third channel depending on a random threshold on first channel).
-        </p>
-        <div id="buttons">
-            <button id="button-generate" title="change seed, generate an new expression and render it">generate</button>
-            <button id="button-render" title="keep seed, generate expression and render it">render</button>
-            <button id="button-copy" title="copy expression to clipboard">copy</button>
-            <button id="button-download" title="download canvas as png">download</button>
-            <button id="button-source" title="copy shareable link to clipboard">source</button>
-            <button id="button-share" title="copy shareable link to clipboard">share</button>
+        <div id="vspace"></div>
+        <div id="footer">
+            <progress id="progress" value="0" min="0" max="10" style="display: none; width: 100%"></progress>
+            <span id="elapsed">—</span>
+            · <span id="size">0×0</span>
+            · <a href="https://users.ece.cmu.edu/~adrian/projects/validation/validation.pdf" title="Hash Visualization: a New Technique to improve Real-World Security (Perrig & Song, 1999)">reference</a>
+            · <a href="https://chalier.fr/" title="Yohan Chalier">author</a>
         </div>
-        <progress id="progress" value="0" min="0" max="10" style="display: none; width: 100%"></progress>
-        <span id="size"></span>
     </div>
     <script src="randomart.js"></script>
 </body>

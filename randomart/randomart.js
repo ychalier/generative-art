@@ -109,7 +109,8 @@ function createWorker() {
                 progress.value = event.data.current;
                 progress.max = event.data.total;
                 progress.style.display = event.data.current == event.data.total ? "none": "unset";
-                document.getElementById("size").textContent = `${event.data.width}x${event.data.height}`;
+                document.getElementById("elapsed").textContent = `${event.data.elapsed.toFixed(1)}s`;
+                document.getElementById("size").textContent = `${event.data.width}×${event.data.height}`;
                 blob = event.data.blob;
                 worker.postMessage({type: "next"});
                 break;
