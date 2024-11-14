@@ -1,27 +1,3 @@
-// const maxDepth = 5;
-
-// const grammarTextGradient = `
-// E :: triple(C, C, C):1 | mix(C, C, C):1
-// C :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):3
-// A :: rgb:1 | x:1 | y:1
-// `;
-
-// const grammarTextGeneral = `
-// E :: triple(C, C, C):1 | sin(C):1
-// C :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):2 | mod(C, C):0.1 | sin(C):3 | cos(C):3 | exp(C):3 | sqrt(C):3 | level(C, C, C):0.1
-// A :: bw:1 | rgb:1 | x:1 | y:1
-// `;
-
-// const grammarInterferences = `
-// E :: triple(C, C, C):1 | mix(C, C, C):1
-// C :: sum(C, C):2 | mult(C, C):2 | A:2 | mix(C, C, C):2 | sin(C):1 | sinbin(C, D):3 | sinbin(A, D):3
-// D :: constant(10):1
-// A :: bw:1 | rgb:1 | x:2 | y:2
-// `;
-
-// const grammarText = grammarTextGradient;
-
-
 var random = Math.random;
 
 function xoshiro128ss(a, b, c, d) {
@@ -361,21 +337,6 @@ function expandGrammar(grammar, key, depth) {
     return rule[0](...args);
 }
 
-function getImageData(context, width, height, expr) {
-    const imageData = context.createImageData(width, height);
-    for (let i = 0; i < height; i++) {
-        for (let j = 0; j < width; j++) {
-            const k = (i * width + j) * 4;
-            const color = expr.eval((j / width) * 2 - 1, (i / height) * 2 - 1);
-            imageData.data[k + 0] = (color[0] + 1) * 128;
-            imageData.data[k + 1] = (color[1] + 1) * 128;
-            imageData.data[k + 2] = (color[2] + 1) * 128;
-            imageData.data[k + 3] = 255;
-        }
-    }
-    return imageData;
-}
-
 function ravelNode(bwNode) {
     return bwNode.eval(0, 0)[0];
 }
@@ -462,11 +423,12 @@ function parseExpr(exprText) {
 var canvas;
 var context;
 var expr;
-var scale;
 var iteration;
 var width;
 var height;
-var steps;
+const steps = 8;
+var pixels;
+var step;
 
 onmessage = (event) => {
     if (event.data.type == "start") {
@@ -488,22 +450,42 @@ onmessage = (event) => {
         iteration = 0;
         width = event.data.width;
         height = event.data.height;
-        scale = 1 / Math.min(width, height);
-        steps = Math.ceil(-Math.log2(scale));
+        pixels = [];
+        for (let i = 0; i < height; i++) {
+            pixels.push([]);
+            for (let j = 0; j < width; j++) {
+                pixels[i].push(null);
+            }
+        }
+        step = 2 ** (steps - 1);
+        iteration = 0;
     }
     if (event.data.type == "start" || event.data.type == "next") {
+        if (step < 1) return;
         iteration++;
-        scale *= 2;
-        if (scale >= 2) return;
-        const imageWidth = Math.min(width, Math.ceil(width * scale));
-        const imageHeight = Math.min(height, Math.ceil(height * scale));
+        const r = Math.round(step);
+        const imageWidth = Math.floor(width / r);
+        const imageHeight = Math.floor(height / r);
+        const imageData = context.createImageData(imageWidth, imageHeight);
+        for (let i = 0; i < height; i += r) {
+            for (let j = 0; j < width; j += r) {
+                if (pixels[i][j] == null) {
+                    pixels[i][j] = expr.eval((j / width) * 2 - 1, (i / height) * 2 - 1);
+                }
+                const k = Math.round((i / r) * imageWidth + (j / r)) * 4;
+                imageData.data[k + 0] = (pixels[i][j][0] + 1) * 128;
+                imageData.data[k + 1] = (pixels[i][j][1] + 1) * 128;
+                imageData.data[k + 2] = (pixels[i][j][2] + 1) * 128;
+                imageData.data[k + 3] = 255;
+            }
+        }
         canvas.width = imageWidth;
         canvas.height = imageHeight;
-        const imageData = getImageData(context, imageWidth, imageHeight, expr);
         context.putImageData(imageData, 0, 0);
         canvas.convertToBlob().then(blob => {
             postMessage({type: "progress", current: iteration, total: steps,
                 blob: blob, width: imageWidth, height: imageHeight});
         });
+        step /= 2;
     }
 }
