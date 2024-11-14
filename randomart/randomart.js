@@ -1,6 +1,10 @@
 const presets = {
     default: {
         depth: 12,
+        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | sin(C):2 | cos(C):2 | exp(C):1 | sqrt(C):1\nA :: bw:1 | rgb:1 | x:1 | y:1",
+    },
+    all: {
+        depth: 12,
         grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | mod(C, C):1 | sin(C):1 | cos(C):1 | exp(C):1 | sqrt(C):1 | level(C, C, C):1\nA :: bw:1 | rgb:1 | x:1 | y:1",
     },
     waves: {
@@ -13,10 +17,22 @@ const presets = {
     },
 };
 
+var defaultSeed = (Math.random()*2**32)>>>0;
+var defaultDepth = presets.default.depth;
+var defaultGrammarText = presets.default.grammarText;
+
+const storageString = localStorage.getItem("randomart");
+if (storageString != null) {
+    const storage = JSON.parse(storageString);
+    defaultSeed = storage.seed;
+    defaultDepth = storage.depth;
+    defaultGrammarText = storage.grammarText;
+}
+
 const params = new URLSearchParams(window.location.search);
-var seed = (params.has("seed") && params.get("seed").trim() != "") ? parseInt(params.get("seed")) : (Math.random()*2**32)>>>0;
-var depth = params.has("depth") ? parseInt(params.get("depth")) : presets.default.depth;
-var grammarText = params.has("grammar") ? params.get("grammar") : presets.default.grammarText;
+var seed = (params.has("seed") && params.get("seed").trim() != "") ? parseInt(params.get("seed")) : defaultSeed;
+var depth = params.has("depth") ? parseInt(params.get("depth")) : defaultDepth;
+var grammarText = params.has("grammar") ? params.get("grammar") : defaultGrammarText;
 const exprText = params.has("expr") ? params.get("expr") : undefined;
 
 document.querySelector("input[name=depth]").value = depth;
@@ -37,7 +53,7 @@ document.getElementById("button-copy").addEventListener("click", event => {
     showToast(event, "expression copied to clipboard");
 });
 
-document.getElementById("button-share-grammar").addEventListener("click", event => {
+document.getElementById("button-source").addEventListener("click", event => {
     const params = new URLSearchParams();
     params.set("depth", depth);
     params.set("seed", seed);
@@ -46,7 +62,7 @@ document.getElementById("button-share-grammar").addEventListener("click", event 
     showToast(event, "link copied to clipboard");
 });
 
-document.getElementById("button-share-expression").addEventListener("click", event => {
+document.getElementById("button-share").addEventListener("click", event => {
     const params = new URLSearchParams();
     params.set("expr", exprString);
     navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?" + params.toString());
@@ -87,9 +103,6 @@ function createWorker() {
         switch(event.data.type) {
             case "expr":
                 exprString = event.data.expr;
-                const url = new URL(location.protocol + "//" + location.host + location.pathname + "?");
-                url.searchParams.set("expr", exprString);
-                window.history.replaceState("", "", url);
                 break;
             case "progress":
                 const progress = document.getElementById("progress");
@@ -121,6 +134,11 @@ function startWorker(useExprText) {
     if (useExprText) {
         args.exprText = exprText;
     }
+    localStorage.setItem("randomart", JSON.stringify({
+        seed: seed,
+        depth: depth,
+        grammarText: grammarText
+    }));
     worker.postMessage(args, [canvas]);
 }
 

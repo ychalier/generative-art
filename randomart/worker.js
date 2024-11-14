@@ -497,7 +497,6 @@ onmessage = (event) => {
         if (scale >= 2) return;
         const imageWidth = Math.min(width, Math.ceil(width * scale));
         const imageHeight = Math.min(height, Math.ceil(height * scale));
-        console.log(`#${iteration} Rendering size ${width}x${height}`);
         canvas.width = imageWidth;
         canvas.height = imageHeight;
         const imageData = getImageData(context, imageWidth, imageHeight, expr);
