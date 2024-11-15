@@ -11,5 +11,6 @@ Name | Illustration
 [Chaikin Curves](chaikin-curves) | [![](chaikin-curves/chaikin.gif)](chaikin-curves)
 [Molnart](molnart) | [![](molnart/molnart.gif)](molnart)
 [Persistence of Vision](persistence-of-vision) | [![](persistence-of-vision/pov.gif)](persistence-of-vision)
+[Randomart](randomart) | [![](randomart/randomart.gif)](randomart)
 
 You may also want to check the [IDEAS.md](IDEAS.md) document for future developments.

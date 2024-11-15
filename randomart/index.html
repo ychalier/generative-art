@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf8">
+    <meta name="viewport" content="width=device-width">
+    <title>randomart</title>
+    <link rel="stylesheet" href="style.css"/>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="dashboard">
+        <div>
+            <div class="row">
+                <div>
+                    <label for="input-depth">depth</label>
+                    <input id="input-depth" name="depth" type="number" min="1" max="20" value="5" size="4"  />
+                </div>
+                <div>
+                    <label for="input-seed">seed</label>
+                    <input id="input-seed" name="seed" type="number" min="0" max="4294967296" value="0" size="12" />
+                </div>
+            </div>
+            <label for="input-grammar">grammar</label>
+            <textarea id="input-grammar" name="grammar" rows="6"></textarea>
+            <div>
+                <span class="preset-label">presets:</span>
+                <span class="preset-link" onclick="loadPreset('default')">default</span>
+                <span class="preset-link" onclick="loadPreset('all')">all</span>
+                <span class="preset-link" onclick="loadPreset('waves')">waves</span>
+                <span class="preset-link" onclick="loadPreset('gradients')">gradients</span>
+            </div>
+            <details id="instructions">
+                <summary><u>instructions</u></summary>
+                <ul>
+                    <li>rules are formed as <code>name :: nodes</code></li>
+                    <li>nodes are formed as <code>node(args):weight</code></li>
+                    <li>multiple nodes can be separated with <code>|</code></li>
+                    <li>the first rule must be named <code>A</code></li>
+                    <li>there must be a rule named <code>Z</code> containing terminal nodes only</li>
+                    <li>terminal nodes are <code>x</code>, <code>y</code>, <code>rgb</code> (random color) and <code>bw</code> (random black and white color)</li>
+                    <li>unary nodes are <code>sin(X)</code>, <code>cos(X)</code>, <code>tan(X)</code>, <code>exp(X)</code>, <code>sqrt(X)</code></li>
+                    <li>binary nodes are <code>sum(X,Y)</code>, <code>mult(X,Y)</code>, <code>mod(X,Y)</code> (division remainder)</li>
+                    <li>ternary nodes are <code>triple(X,Y,Z)</code> (build color taking red from X, green from Y and blue from Z), <code>mix(X,Y,Z)</code> (blend Y and Z, controlled by X), <code>level(X,Y,Z)</code> (choose Y or Z based on X value)</li>
+                    <li>computations are scaled between -1 and 1, which mostly impacts <code>tan</code>, <code>exp</code>, <code>sqrt</code> and <code>sum</code></li>
+                    <li><code>sin</code> and <code>cos</code> can accept a frequency argument, and even a phase argument; if omitted, they are randomly generated</li>
+                    <li><code>level</code> can accept a threshold argument; if omitted, it is randomly generated</li>
+                </ul>
+            </details>
+            <div id="buttons">
+                <button id="button-generate" title="change seed, generate an new expression and render it">generate</button>
+                <button id="button-render" title="keep seed, generate expression and render it">render</button>
+                <button id="button-download" title="download canvas as png">download</button>
+                <a id="button-share" title="shareable link">share</a>
+                <button id="button-shader" title="download GLSL shader">shader</button>
+            </div>
+        </div>
+        <div id="vspace"></div>
+        <div id="footer">
+            <progress id="progress" value="0" min="0" max="10" style="display: none; width: 100%"></progress>
+            <label for="checkbox-gpu"><input id="checkbox-gpu" name="gpu" type="checkbox" checked />gpu</label>
+            · <span id="elapsed">—</span>
+            · <span id="size">0×0</span>
+            · <a href="https://users.ece.cmu.edu/~adrian/projects/validation/validation.pdf" title="Hash Visualization: a New Technique to improve Real-World Security (Perrig & Song, 1999)">ref</a>
+            · <a href="https://chalier.fr/" title="Yohan Chalier">author</a>
+        </div>
+    </div>
+    <script src="randomart.js"></script>
+</body>
+
+</html>
