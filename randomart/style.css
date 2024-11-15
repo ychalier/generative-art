@@ -99,6 +99,10 @@ input {
     margin-bottom: .4rem;
 }
 
+input[type=checkbox] {
+    display: inline;
+}
+
 textarea {
     margin: 0 0 .4rem 0;
     resize: vertical;

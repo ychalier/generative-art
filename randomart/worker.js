@@ -89,7 +89,7 @@ function nodeX() {
             return `x`;
         },
         toGlsl() {
-            return `vec3 node${nodeId} = vec3(uv.x, uv.x, uv.x);`;
+            return `vec3 node${nodeId} = 2.0 * vec3(uv.x, uv.x, uv.x) - 1.0;`;
         },
         eval(x, y) {
             return [x, x, x];
@@ -107,7 +107,7 @@ function nodeY() {
             return `y`;
         },
         toGlsl() {
-            return `vec3 node${nodeId} = vec3(uv.y, uv.y, uv.y);`;
+            return `vec3 node${nodeId} = 2.0 * vec3(1.0 - uv.y, 1.0 - uv.y, 1.0 - uv.y) - 1.0;`;
         },
         eval(x, y) {
             return [y, y, y];
@@ -115,7 +115,7 @@ function nodeY() {
     }
 }
 
-function nodeUnary(subexpr, label, apply, min=-1, max=1, params=[]) {
+function nodeUnary(subexpr, label, apply, min=-1, max=1, params=[], glCode=undefined) {
     const nodeId = nodeCount;
     nodeCount++;
     return {
@@ -130,6 +130,9 @@ function nodeUnary(subexpr, label, apply, min=-1, max=1, params=[]) {
             return `${label}(${argString.join(", ")})`;
         },
         toGlsl() {
+            if (glCode != undefined) {
+                return `${subexpr.toGlsl()}\nvec3 node${nodeId} = ${glCode(subexpr.id)};`;
+            }
             return `${subexpr.toGlsl()}\nvec3 node${nodeId} = ${label}(node${subexpr.id});`;
         },
         eval(x, y) {
@@ -146,24 +149,32 @@ function nodeUnary(subexpr, label, apply, min=-1, max=1, params=[]) {
 function nodeSin(subexpr, forcedPhase, forcedFrequency) {
     const phase = forcedPhase == undefined ? random() * Math.PI : forcedPhase;
     const frequency = forcedFrequency == undefined ? random() * 5 + 1 : forcedFrequency;
-    return nodeUnary(subexpr, "sin", a => Math.sin(a * frequency + phase), -1, 1, [phase, frequency]);
+    return nodeUnary(subexpr, "sin", a => Math.sin(a * frequency + phase), -1, 1, [phase, frequency], nodeId => {
+        return `sin(node${nodeId} * ${frequency} + ${phase})`
+    });
 }
 
 function nodeCos(subexpr, forcedPhase, forcedFrequency) {
     const phase = forcedPhase == undefined ? random() * Math.PI : forcedPhase;
     const frequency = forcedFrequency == undefined ? random() * 5 + 1 : forcedFrequency;
-    return nodeUnary(subexpr, "cos", a => Math.cos(a * frequency + phase), -1, 1, [phase, frequency]);
+    return nodeUnary(subexpr, "cos", a => Math.cos(a * frequency + phase), -1, 1, [phase, frequency], nodeId => {
+        return `cos(node${nodeId} * ${frequency} + ${phase})`
+    });
 }
 
 function nodeExp(subexpr) {
-    return nodeUnary(subexpr, "exp", Math.exp, 0, Math.exp(1));
+    return nodeUnary(subexpr, "exp", Math.exp, 0, Math.exp(1), [], nodeId => {
+        return `2.0 * exp(node${nodeId}) / exp(1.0) - 1.0`;
+    });
 }
 
 function nodeSqrt(subexpr) {
-    return nodeUnary(subexpr, "sqrt", a => Math.sqrt((a + 1) / 2) * 2 - 1);
+    return nodeUnary(subexpr, "sqrt", a => Math.sqrt((a + 1) / 2) * 2 - 1, -1, 1, [], nodeId => {
+        return `sqrt((node${nodeId} + 1.0) / 2.0) * 2.0 - 1.0`;
+    });
 }
 
-function nodeBinary(left, right, label, apply, min=-1, max=1) {
+function nodeBinary(left, right, label, apply, min=-1, max=1, glCode=undefined) {
     const nodeId = nodeCount;
     nodeCount++;
     return {
@@ -173,6 +184,9 @@ function nodeBinary(left, right, label, apply, min=-1, max=1) {
             return `${label}(${left.toString()}, ${right.toString()})`;
         },
         toGlsl() {
+            if (glCode != undefined) {
+                return `${left.toGlsl()}\n${right.toGlsl()}\nvec3 node${nodeId} = ${glCode(left.id, right.id)};`;
+            }
             return `${left.toGlsl()}\n${right.toGlsl()}\nvec3 node${nodeId} = ${label}(node${left.id}, node${right.id});`;
         },
         eval(x, y) {
@@ -188,15 +202,21 @@ function nodeBinary(left, right, label, apply, min=-1, max=1) {
 }
 
 function nodeSum(left, right) {
-    return nodeBinary(left, right, "sum", (a, b) => a + b, -2, 2);
+    return nodeBinary(left, right, "sum", (a, b) => a + b, -2, 2, (leftId, rightId) => {
+        return `(node${leftId} + node${rightId}) / 2.0`;
+    });
 }
 
 function nodeMult(left, right) {
-    return nodeBinary(left, right, "mult", (a, b) => a * b);
+    return nodeBinary(left, right, "mult", (a, b) => a * b, -1, 1, (leftId, rightId) => {
+        return `node${leftId} * node${rightId}`;
+    });
 }
 
 function nodeMod(left, right) {
-    return nodeBinary(left, right, "mod", (a, b) => b == 0 ? a : a % b);
+    return nodeBinary(left, right, "mod", (a, b) => b == 0 ? a : a % b, -1, 1, (leftId, rightId) => {
+        return `node${leftId} % node${rightId}`;
+    });
 }
 
 function nodeSinBin(left, right) {
@@ -221,7 +241,7 @@ function nodeTriple(first, second, third) {
     }
 }
 
-function nodeTernary(left, middle, right, label, apply, min=-1, max=1, params=[]) {
+function nodeTernary(left, middle, right, label, apply, min=-1, max=1, params=[], glCode=undefined) {
     const nodeId = nodeCount;
     nodeCount++;
     return {
@@ -236,7 +256,10 @@ function nodeTernary(left, middle, right, label, apply, min=-1, max=1, params=[]
             return `${label}(${argString.join(", ")})`;
         },
         toGlsl() {
-            return `${left.toGlsl()}\n${middle.toGlsl()}\n${right.toGlsl()}\nvec3 node${nodeId} = humtriple;`;
+            if (glCode != undefined) {
+                return `${left.toGlsl()}\n${middle.toGlsl()}\n${right.toGlsl()}\nvec3 node${nodeId} = ${glCode(left.id, middle.id, right.id)};`;
+            }
+            throw new Error("Not implemented!");
         },
         eval(x, y, t) {
             const a = left.eval(x, y);
@@ -260,6 +283,8 @@ function nodeMix(left, middle, right) {
     return nodeTernary(left, middle, right, "mix", (a, b, c) => {
         const w = (a + 1) / 2;
         return (1 - a) * b + a * c;
+    }, -1, 1, [], (leftId, middleId, rightId) => {
+        return `mix(node${middleId}, node${rightId}, (node${leftId} + 1.0) / 2.0)`
     });
 }
 
@@ -549,7 +574,7 @@ onmessage = (event) => {
         varying vec2 uv;
         void main() {
             ${expr.toGlsl()}
-            gl_FragColor.xyz = node${expr.id};
+            gl_FragColor.xyz = (node${expr.id} + 1.0) / 2.0;
             gl_FragColor.w = 1.0;
         }`;
         const vertexShader = gl.createShader(gl.VERTEX_SHADER);
