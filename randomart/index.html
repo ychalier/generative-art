@@ -33,28 +33,28 @@
                 <span class="preset-link" onclick="loadPreset('gradients')">gradients</span>
             </div>
             <details id="instructions">
-                <summary>instructions</summary>
-                <div>
-                    First rule must be named <code>E</code>. There
-                    should be a rule named <code>A</code> containing terminal nodes only.
-                    Possible nodes are: <code>x</code>, <code>y</code>, <code>bw</code>
-                    (random 1d value), <code>rgb</code> (random 3d value), <code>sin(A)</code>,
-                    <code>cos(A)</code>, <code>tan(A)</code>, <code>exp(A)</code>, <code>sqrt(A)</code>,
-                    <code>sum(A, B)</code>, <code>mult(A, B)</code>, <code>mod(A, B)</code>,
-                    <code>triple(A, B, C)</code> (build 3d from 3 components),
-                    <code>mix(A, B, C)</code> (blend first two channels, third channel
-                    determines the balance), <code>level(A, B, C)</code> (yields second
-                    or third channel depending on a random threshold on first channel).
-                </div>
+                <summary><u>instructions</u></summary>
+                <ul>
+                    <li>rules are formed as <code>name :: nodes</code></li>
+                    <li>nodes are formed as <code>node(args):weight</code></li>
+                    <li>multiple nodes can be separated with <code>|</code></li>
+                    <li>the first rule must be named <code>A</code></li>
+                    <li>there must be a rule named <code>Z</code> containing terminal nodes only</li>
+                    <li>terminal nodes are <code>x</code>, <code>y</code>, <code>rgb</code> (random color) and <code>bw</code> (random black and white color)</li>
+                    <li>unary nodes are <code>sin(X)</code>, <code>cos(X)</code>, <code>tan(X)</code>, <code>exp(X)</code>, <code>sqrt(X)</code></li>
+                    <li>binary nodes are <code>sum(X,Y)</code>, <code>mult(X,Y)</code>, <code>mod(X,Y)</code> (division remainder)</li>
+                    <li>ternary nodes are <code>triple(X,Y,Z)</code> (build color taking red from X, green from Y and blue from Z), <code>mix(X,Y,Z)</code> (blend Y and Z, controlled by X), <code>level(X,Y,Z)</code> (choose Y or Z based on X value)</li>
+                    <li>computations are scaled between -1 and 1, which mostly impacts <code>tan</code>, <code>exp</code>, <code>sqrt</code> and <code>sum</code></li>
+                    <li><code>sin</code> and <code>cos</code> can accept a frequency argument, and even a phase argument; if omitted, they are randomly generated</li>
+                    <li><code>level</code> can accept a threshold argument; if omitted, it is randomly generated</li>
+                </ul>
             </details>
             <div id="buttons">
                 <button id="button-generate" title="change seed, generate an new expression and render it">generate</button>
                 <button id="button-render" title="keep seed, generate expression and render it">render</button>
                 <button id="button-download" title="download canvas as png">download</button>
-                <button id="button-source" title="copy shareable link to clipboard">share source</button>
-                <button id="button-share" title="copy shareable link to clipboard">share expression</button>
-                <button id="button-copy" title="copy expression to clipboard">copy expression</button>
-                <button id="button-shader" title="download GLSL shader">get shader</button>
+                <a id="button-share" title="shareable link">share</a>
+                <button id="button-shader" title="download GLSL shader">shader</button>
             </div>
         </div>
         <div id="vspace"></div>
@@ -63,7 +63,7 @@
             <label for="checkbox-gpu"><input id="checkbox-gpu" name="gpu" type="checkbox" checked />gpu</label>
             · <span id="elapsed">—</span>
             · <span id="size">0×0</span>
-            · <a href="https://users.ece.cmu.edu/~adrian/projects/validation/validation.pdf" title="Hash Visualization: a New Technique to improve Real-World Security (Perrig & Song, 1999)">reference</a>
+            · <a href="https://users.ece.cmu.edu/~adrian/projects/validation/validation.pdf" title="Hash Visualization: a New Technique to improve Real-World Security (Perrig & Song, 1999)">ref</a>
             · <a href="https://chalier.fr/" title="Yohan Chalier">author</a>
         </div>
     </div>

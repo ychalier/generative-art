@@ -54,7 +54,7 @@ body.show-cursor {
     top: 0;
     left: 0;
     height: 100%;
-    width: 300px;
+    width: 325px;
     background: var(--background-primary);
     box-shadow: 0 0 4px black;
     padding: .4rem;
@@ -109,6 +109,7 @@ textarea {
     resize: vertical;
     width: 100%;
     font-size: small;
+    line-height: 1.4;
 }
 
 .toast {
@@ -131,16 +132,19 @@ textarea {
     margin-top: .8rem;
 }
 
-button {
+button,
+#button-share {
     background: var(--background-secondary);
     color: var(--text-bright);
     border: 1px solid var(--border);
     font-family: inherit;
     cursor: pointer;
     padding: .4rem;
+    text-decoration: none;
 }
 
-button:hover {
+button:hover,
+#button-share:hover {
     background: var(--background-tertiary);
 }
 
@@ -184,4 +188,9 @@ code {
 
 progress {
     accent-color: var(--accent);
+}
+
+ul {
+    padding-left: 1em;
+    margin: .2rem 0 .4rem 0;
 }

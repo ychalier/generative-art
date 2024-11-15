@@ -1,23 +1,19 @@
 const presets = {
-    test: {
-        depth: 4,
-        grammarText: "E :: triple(C, C, C):1\nC :: sin(C):1 | exp(C):1 | A:1\nA :: rgb:1 | x:1 | y:1",
-    },
     default: {
         depth: 12,
-        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | sin(C):2 | cos(C):2 | exp(C):1 | sqrt(C):1 | tan(C):1 | mod(C, C):1\nA :: bw:1 | rgb:1 | x:1 | y:1",
+        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | exp(B):1 | sqrt(B):1 | tan(B):1 | sum(B,B):1 | mult(B,B):1| mix(B,B,B):1\nZ :: x:1 | y:1 | rgb:1",
     },
     all: {
         depth: 12,
-        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | mod(C, C):1 | sin(C):1 | cos(C):1 | exp(C):1 | sqrt(C):1 | tan(C):1 | level(C, C, C):1\nA :: bw:1 | rgb:1 | x:1 | y:1",
+        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | tan(B):1 | exp(B):1 | sqrt(B):1 | sum(B,B):1 | mult(B,B):1 | mod(B,B):1 | mix(B,B,B):1 | level(B,B,B):1\nZ :: x:1 | y:1 | rgb:1 | bw:1",
     },
     waves: {
         depth: 12,
-        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1| A:1 | mix(C, C, C):1 | sin(C):6\nA :: bw:2 | rgb:1 | x:2 | y:2",
+        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B,2):6 | sum(B,B):1 | mult(B,B):1 | mix(B,B,B):1\nZ :: x:2 | y:2 | rgb:1 | bw:1",
     },
     gradients: {
         depth: 5,
-        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):3 | mult(C, C):3 | A:2 | mix(C, C, C):3\nA :: rgb:1 | x:1 | y:1"
+        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | mix(B,B,B):2\nZ :: x:1 | y:1 | rgb:1"
     },
 };
 
@@ -53,27 +49,6 @@ function loadPreset(presetName) {
 var exprString;
 var shaderString;
 var blob;
-
-document.getElementById("button-copy").addEventListener("click", event => {
-    navigator.clipboard.writeText(exprString == undefined ? "" : exprString);
-    showToast(event, "expression copied to clipboard");
-});
-
-document.getElementById("button-source").addEventListener("click", event => {
-    const params = new URLSearchParams();
-    params.set("depth", depth);
-    params.set("seed", seed);
-    params.set("grammar", grammarText);
-    navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?" + params.toString());
-    showToast(event, "link copied to clipboard");
-});
-
-document.getElementById("button-share").addEventListener("click", event => {
-    const params = new URLSearchParams();
-    params.set("expr", exprString);
-    navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?" + params.toString());
-    showToast(event, "link copied to clipboard");
-});
 
 function showToast(event, message) {
     const toast = document.body.appendChild(document.createElement("div"));
@@ -133,6 +108,9 @@ function createWorker() {
                 break;
         }
     };
+    worker.onerror = event => {
+        alert(event.message);
+    }
 }
 
 function startWorker(useExprText) {
@@ -150,6 +128,14 @@ function startWorker(useExprText) {
         type: "start",
         renderGl: document.querySelector("input[name=gpu]").checked,
     };
+
+    const params = new URLSearchParams();
+    params.set("depth", depth);
+    params.set("seed", seed);
+    params.set("grammar", grammarText);
+    const url = window.location.origin + window.location.pathname + "?" + params.toString();
+    document.getElementById("button-share").href = url;
+
     if (useExprText) {
         args.exprText = exprText;
     }

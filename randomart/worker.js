@@ -377,7 +377,7 @@ function parseGrammar(grammarText) {
             }
             if (typeof(ruleNode) == typeof("A")) {
                 if (ruleArgs != null) {
-                    throw new Error(`Node cannot accept arguments at line ${lineIndex+1} for rule ${ruleIndex+1}`);
+                    throw new Error(`Node '${ruleNode}' either do not exist or cannot accept arguments at line ${lineIndex+1} for rule ${ruleIndex+1}`);
                 }
             } else {
                 const fakeNode = ruleNode();
@@ -401,7 +401,7 @@ function expandGrammar(grammar, key, depth) {
     }
     let rule;
     if (depth <= 0) {
-        key = "A";
+        key = "Z";
     }
     const nonce = random();
     let totalWeight = 0;
@@ -547,9 +547,9 @@ onmessage = (event) => {
         if (event.data.exprText != undefined) {
             expr = parseExpr(event.data.exprText);
         } else if (event.data.grammarText != undefined && event.data.depth != undefined) {
-            const grammar = parseGrammar(event.data.grammarText); // TODO: handle errors
-            expr = expandGrammar(grammar, "E", event.data.depth); // TODO: handle errors
-        } 
+            const grammar = parseGrammar(event.data.grammarText);
+            expr = expandGrammar(grammar, "A", event.data.depth);
+        }
         if (expr == undefined) {
             throw new Error("Could not build expression");
         }
@@ -604,7 +604,7 @@ onmessage = (event) => {
                 elapsed: ((new Date()) - timeStart) / 1000});
         });
     }
-    if (!renderGl && (event.data.type == "start" || event.data.type == "next")) {        
+    if (!renderGl && (event.data.type == "start" || event.data.type == "next")) {
         if (step < 1) return;
         iteration++;
         const r = Math.round(step);
