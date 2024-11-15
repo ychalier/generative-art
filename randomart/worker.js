@@ -174,6 +174,12 @@ function nodeSqrt(subexpr) {
     });
 }
 
+function nodeTan(subexpr) {
+    return nodeUnary(subexpr, "tan", a => Math.tan(a) * 0.642092615934, -1, 1, [], nodeId => {
+        return `tan(node${nodeId}) * 0.642092615934`;
+    });
+}
+
 function nodeBinary(left, right, label, apply, min=-1, max=1, glCode=undefined) {
     const nodeId = nodeCount;
     nodeCount++;
@@ -215,7 +221,7 @@ function nodeMult(left, right) {
 
 function nodeMod(left, right) {
     return nodeBinary(left, right, "mod", (a, b) => b == 0 ? a : a % b, -1, 1, (leftId, rightId) => {
-        return `node${leftId} % node${rightId}`;
+        return `mod(node${leftId}, node${rightId})`;
     });
 }
 
@@ -276,15 +282,18 @@ function nodeTernary(left, middle, right, label, apply, min=-1, max=1, params=[]
 
 function nodeLevel(left, middle, right, forcedThreshold) {
     const threshold = forcedThreshold == undefined ? random() * 2 - 1 : forcedThreshold;
-    return nodeTernary(left, middle, right, "level", (a, b, c) => a < threshold ? b : c, -1, 1, [threshold]);
+    return nodeTernary(left, middle, right, "level", (a, b, c) => a < threshold ? b : c, -1, 1, [threshold],
+    (leftId, middleId, rightId) => {
+        return `vec3(node${leftId}.x < ${threshold} ? node${middleId}.x : node${rightId}.x, node${leftId}.y < ${threshold} ? node${middleId}.y : node${rightId}.y, node${leftId}.z < ${threshold} ? node${middleId}.z : node${rightId}.z)`;
+    });
 }
 
 function nodeMix(left, middle, right) {
     return nodeTernary(left, middle, right, "mix", (a, b, c) => {
         const w = (a + 1) / 2;
-        return (1 - a) * b + a * c;
+        return (1 - w) * b + w * c;
     }, -1, 1, [], (leftId, middleId, rightId) => {
-        return `mix(node${middleId}, node${rightId}, (node${leftId} + 1.0) / 2.0)`
+        return `mix(node${middleId}, node${rightId}, (node${leftId} + 1.0) / 2.0)`;
     });
 }
 
@@ -337,6 +346,9 @@ function parseGrammar(grammarText) {
                     break;
                 case "sqrt":
                     ruleNode = nodeSqrt;
+                    break;
+                case "tan":
+                    ruleNode = nodeTan;
                     break;
                 case "level":
                     ruleNode = nodeLevel;
@@ -496,6 +508,8 @@ function parseExpr(exprText) {
             return nodeExp(...args);
         case "sqrt":
             return nodeSqrt(...args);
+        case "tan":
+            return nodeTan(...args);
         case "sum":
             return nodeSum(...args);
         case "mult":
@@ -529,6 +543,7 @@ var pixels;
 var step;
 var timeStart;
 var renderGl;
+var shaderText;
 
 onmessage = (event) => {
     if (event.data.type == "start") {
@@ -543,7 +558,6 @@ onmessage = (event) => {
         if (expr == undefined) {
             throw new Error("Could not build expression");
         }
-        postMessage({type: "expr", expr: expr.toString()});
         if (event.data.canvas != undefined) {
             canvas = event.data.canvas;
             if (renderGl) {
@@ -552,6 +566,9 @@ onmessage = (event) => {
                 context = canvas.getContext("2d");
             }
         }
+        // console.log(expr.toGlsl());
+        shaderText = `precision lowp float;\nvarying vec2 uv;\nvoid main() {\n${expr.toGlsl()}\ngl_FragColor.xyz = (node${expr.id} + 1.0) / 2.0;\ngl_FragColor.w = 1.0;\n}`;
+        postMessage({type: "expr", expr: expr.toString(), shader: shaderText});
         iteration = 0;
         width = event.data.width;
         height = event.data.height;
@@ -567,16 +584,6 @@ onmessage = (event) => {
         timeStart = new Date();
     }
     if (renderGl && event.data.type == "start") {
-        canvas.width = width;
-        canvas.height = height;
-        console.log(expr.toGlsl());
-        const shaderText = `precision highp float;
-        varying vec2 uv;
-        void main() {
-            ${expr.toGlsl()}
-            gl_FragColor.xyz = (node${expr.id} + 1.0) / 2.0;
-            gl_FragColor.w = 1.0;
-        }`;
         const vertexShader = gl.createShader(gl.VERTEX_SHADER);
         gl.shaderSource(vertexShader, `attribute vec2 position; varying vec2 uv; void main() {uv = (position * 0.5) + 0.5; gl_Position = vec4(position, 0, 1);}`);
         gl.compileShader(vertexShader);
@@ -592,6 +599,8 @@ onmessage = (event) => {
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
         gl.enableVertexAttribArray(0);
         gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        canvas.width = width;
+        canvas.height = height;
         gl.viewport(0, 0, width, height);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
         canvas.convertToBlob().then(blob => {

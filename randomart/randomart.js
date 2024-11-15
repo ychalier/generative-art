@@ -5,15 +5,15 @@ const presets = {
     },
     default: {
         depth: 12,
-        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | sin(C):2 | cos(C):2 | exp(C):1 | sqrt(C):1\nA :: bw:1 | rgb:1 | x:1 | y:1",
+        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | sin(C):2 | cos(C):2 | exp(C):1 | sqrt(C):1 | tan(C):1 | mod(C, C):1\nA :: bw:1 | rgb:1 | x:1 | y:1",
     },
     all: {
         depth: 12,
-        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | mod(C, C):1 | sin(C):1 | cos(C):1 | exp(C):1 | sqrt(C):1 | level(C, C, C):1\nA :: bw:1 | rgb:1 | x:1 | y:1",
+        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | mod(C, C):1 | sin(C):1 | cos(C):1 | exp(C):1 | sqrt(C):1 | tan(C):1 | level(C, C, C):1\nA :: bw:1 | rgb:1 | x:1 | y:1",
     },
     waves: {
         depth: 12,
-        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | sin(C):6\nA :: bw:2 | rgb:1 | x:2 | y:2",
+        grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1| A:1 | mix(C, C, C):1 | sin(C):6\nA :: bw:2 | rgb:1 | x:2 | y:2",
     },
     gradients: {
         depth: 5,
@@ -22,7 +22,7 @@ const presets = {
 };
 
 var defaultSeed = (Math.random()*2**32)>>>0;
-var defaultPreset = "test";
+var defaultPreset = "default";
 var defaultDepth = presets[defaultPreset].depth;
 var defaultGrammarText = presets[defaultPreset].grammarText;
 
@@ -51,6 +51,7 @@ function loadPreset(presetName) {
 }
 
 var exprString;
+var shaderString;
 var blob;
 
 document.getElementById("button-copy").addEventListener("click", event => {
@@ -97,7 +98,17 @@ document.getElementById("button-download").addEventListener("click", event => {
     link.setAttribute("download", filename);
     link.href = URL.createObjectURL(blob);
     link.click();
-    showToast(event, `download to ${filename}`);
+    showToast(event, `downloaded as ${filename}`);
+});
+
+document.getElementById("button-shader").addEventListener("click", event => {
+    const link = document.createElement("a");
+    const filename = `randomart-${parseInt((new Date()) * 1)}.frag`;
+    link.setAttribute("download", filename);
+    const blob = new Blob([shaderString], {type: "text/plain"});
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    showToast(event, `downloaded as ${filename}`);
 });
 
 var worker;
@@ -108,6 +119,7 @@ function createWorker() {
         switch(event.data.type) {
             case "expr":
                 exprString = event.data.expr;
+                shaderString = event.data.shader;
                 break;
             case "progress":
                 const progress = document.getElementById("progress");

@@ -27,7 +27,6 @@
             <textarea id="input-grammar" name="grammar" rows="6"></textarea>
             <div>
                 <span class="preset-label">presets:</span>
-                <span class="preset-link" onclick="loadPreset('test')">test</span>
                 <span class="preset-link" onclick="loadPreset('default')">default</span>
                 <span class="preset-link" onclick="loadPreset('all')">all</span>
                 <span class="preset-link" onclick="loadPreset('waves')">waves</span>
@@ -40,7 +39,7 @@
                     should be a rule named <code>A</code> containing terminal nodes only.
                     Possible nodes are: <code>x</code>, <code>y</code>, <code>bw</code>
                     (random 1d value), <code>rgb</code> (random 3d value), <code>sin(A)</code>,
-                    <code>cos(A)</code>, <code>exp(A)</code>, <code>sqrt(A)</code>,
+                    <code>cos(A)</code>, <code>tan(A)</code>, <code>exp(A)</code>, <code>sqrt(A)</code>,
                     <code>sum(A, B)</code>, <code>mult(A, B)</code>, <code>mod(A, B)</code>,
                     <code>triple(A, B, C)</code> (build 3d from 3 components),
                     <code>mix(A, B, C)</code> (blend first two channels, third channel
@@ -55,13 +54,14 @@
                 <button id="button-source" title="copy shareable link to clipboard">share source</button>
                 <button id="button-share" title="copy shareable link to clipboard">share expression</button>
                 <button id="button-copy" title="copy expression to clipboard">copy expression</button>
+                <button id="button-shader" title="download GLSL shader">get shader</button>
             </div>
         </div>
         <div id="vspace"></div>
         <div id="footer">
             <progress id="progress" value="0" min="0" max="10" style="display: none; width: 100%"></progress>
-            <label for="checkbox-gpu"><input id="checkbox-gpu" name="gpu" type="checkbox" checked /> gpu</label><br>
-            <span id="elapsed">—</span>
+            <label for="checkbox-gpu"><input id="checkbox-gpu" name="gpu" type="checkbox" checked />gpu</label>
+            · <span id="elapsed">—</span>
             · <span id="size">0×0</span>
             · <a href="https://users.ece.cmu.edu/~adrian/projects/validation/validation.pdf" title="Hash Visualization: a New Technique to improve Real-World Security (Perrig & Song, 1999)">reference</a>
             · <a href="https://chalier.fr/" title="Yohan Chalier">author</a>

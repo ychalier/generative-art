@@ -101,6 +101,7 @@ input {
 
 input[type=checkbox] {
     display: inline;
+    accent-color: var(--accent);
 }
 
 textarea {
