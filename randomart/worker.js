@@ -32,7 +32,7 @@ function nodeBw(forcedA) {
             return `${a}`;
         },
         toGlsl() {
-            return `vec3 node${nodeId} = vec3(${a}, ${a}, ${a});`;
+            return `vec3 node${nodeId} = vec3(${a.toFixed(17)}, ${a.toFixed(17)}, ${a.toFixed(17)});`;
         },
         eval(x, y) {
             return [a, a, a];
@@ -50,7 +50,7 @@ function nodeConstant(a) {
             return `${a}`;
         },
         toGlsl() {
-            return `vec3 node${nodeId} = vec3(${a}, ${a}, ${a});`;
+            return `vec3 node${nodeId} = vec3(${a.toFixed(17)}, ${a.toFixed(17)}, ${a.toFixed(17)});`;
         },
         eval(x, y) {
             return [a, a, a];
@@ -71,7 +71,7 @@ function nodeRgb(forcedR, forcedG, forcedB) {
             return `rgb(${r}, ${g}, ${b})`;
         },
         toGlsl() {
-            return `vec3 node${nodeId} = vec3(${r}, ${g}, ${b});`;
+            return `vec3 node${nodeId} = vec3(${r.toFixed(17)}, ${g.toFixed(17)}, ${b.toFixed(17)});`;
         },
         eval(x, y) {
             return [r, g, b];
@@ -146,19 +146,19 @@ function nodeUnary(subexpr, label, apply, min=-1, max=1, params=[], glCode=undef
     }
 }
 
-function nodeSin(subexpr, forcedPhase, forcedFrequency) {
+function nodeSin(subexpr, forcedFrequency, forcedPhase) {
     const phase = forcedPhase == undefined ? random() * Math.PI : forcedPhase;
     const frequency = forcedFrequency == undefined ? random() * 5 + 1 : forcedFrequency;
-    return nodeUnary(subexpr, "sin", a => Math.sin(a * frequency + phase), -1, 1, [phase, frequency], nodeId => {
-        return `sin(node${nodeId} * ${frequency} + ${phase})`
+    return nodeUnary(subexpr, "sin", a => Math.sin(a * frequency + phase), -1, 1, [frequency, phase], nodeId => {
+        return `sin(node${nodeId} * ${frequency.toFixed(17)} + ${phase.toFixed(17)})`
     });
 }
 
-function nodeCos(subexpr, forcedPhase, forcedFrequency) {
+function nodeCos(subexpr, forcedFrequency, forcedPhase) {
     const phase = forcedPhase == undefined ? random() * Math.PI : forcedPhase;
     const frequency = forcedFrequency == undefined ? random() * 5 + 1 : forcedFrequency;
-    return nodeUnary(subexpr, "cos", a => Math.cos(a * frequency + phase), -1, 1, [phase, frequency], nodeId => {
-        return `cos(node${nodeId} * ${frequency} + ${phase})`
+    return nodeUnary(subexpr, "cos", a => Math.cos(a * frequency + phase), -1, 1, [frequency, phase], nodeId => {
+        return `cos(node${nodeId} * ${frequency.toFixed(17)} + ${phase.toFixed(17)})`
     });
 }
 
@@ -225,10 +225,6 @@ function nodeMod(left, right) {
     });
 }
 
-function nodeSinBin(left, right) {
-    return nodeBinary(left, right, "sinBin", (a, b) => Math.sin(a * b));
-}
-
 function nodeTriple(first, second, third) {
     const nodeId = nodeCount;
     nodeCount++;
@@ -284,7 +280,7 @@ function nodeLevel(left, middle, right, forcedThreshold) {
     const threshold = forcedThreshold == undefined ? random() * 2 - 1 : forcedThreshold;
     return nodeTernary(left, middle, right, "level", (a, b, c) => a < threshold ? b : c, -1, 1, [threshold],
     (leftId, middleId, rightId) => {
-        return `vec3(node${leftId}.x < ${threshold} ? node${middleId}.x : node${rightId}.x, node${leftId}.y < ${threshold} ? node${middleId}.y : node${rightId}.y, node${leftId}.z < ${threshold} ? node${middleId}.z : node${rightId}.z)`;
+        return `vec3(node${leftId}.x < ${threshold.toFixed(17)} ? node${middleId}.x : node${rightId}.x, node${leftId}.y < ${threshold.toFixed(17)} ? node${middleId}.y : node${rightId}.y, node${leftId}.z < ${threshold.toFixed(17)} ? node${middleId}.z : node${rightId}.z)`;
     });
 }
 
@@ -371,8 +367,6 @@ function parseGrammar(grammarText) {
                 case "y":
                     ruleNode = nodeY;
                     break;
-                case "sinbin":
-                    ruleNode = nodeSinBin;
             }
             let ruleArgs = null;
             if (tertiarySplit[2] != undefined) {
@@ -387,8 +381,8 @@ function parseGrammar(grammarText) {
                 }
             } else {
                 const fakeNode = ruleNode();
-                if ((ruleArgs == null && fakeNode.arity != 0) || (ruleArgs != null && ruleArgs.length != fakeNode.arity)) {
-                    throw new Error(`Invalid number of arguments at line ${lineIndex+1} for rule ${ruleIndex+1}`);
+                if ((ruleArgs == null && fakeNode.arity != 0) || (ruleArgs != null && ruleArgs.length < fakeNode.arity)) {
+                    throw new Error(`Not enough arguments at line ${lineIndex+1} for rule ${ruleIndex+1}`);
                 }
             }
             const ruleWeight = parseFloat(tertiarySplit[3]);
@@ -430,18 +424,21 @@ function expandGrammar(grammar, key, depth) {
         return expandGrammar(grammar, rule[0], depth-1);
     }
     const args = [];
+    const fakeNodeArity = rule[0]().arity;
     if (rule[0] == nodeBw && rule[1] == null) {
         //pass
     } else if ((rule[0] == nodeConstant || rule[0] == nodeBw) && rule[1].length == 1 && rule[1][0].match(/^\d(?:\.\d+)?/)) {
         args.push(parseFloat(rule[1][0]));
     } else if (rule[1] != null) {
-        for (let j = 0; j < rule[1].length; j++) {
+        for (let j = 0; j < fakeNodeArity; j++) {
             args.push(expandGrammar(grammar, rule[1][j], depth-1));
         }
+        for (let j = fakeNodeArity; j < rule[1].length; j++) {
+            args.push(parseFloat(rule[1][j]));
+        }
     }
-    const fakeNodeArity = rule[0]().arity;
-    if (args.length != fakeNodeArity) {
-        throw new Error(`Invalid arity for rule ${rule}`)
+    if (args.length < fakeNodeArity) {
+        throw new Error(`Not enough arguments for rule ${rule}`)
     }
     return rule[0](...args);
 }
@@ -516,8 +513,6 @@ function parseExpr(exprText) {
             return nodeMult(...args);
         case "mod":
             return nodeMod(...args);
-        case "sinBin":
-            return nodeSinBin(...args);
         case "triple":
             return nodeTriple(...args);
         case "level":
