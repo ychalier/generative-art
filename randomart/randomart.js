@@ -1,4 +1,8 @@
 const presets = {
+    test: {
+        depth: 4,
+        grammarText: "E :: triple(C, C, C):1\nC :: sin(C):1 | exp(C):1 | A:1\nA :: rgb:1 | x:1 | y:1",
+    },
     default: {
         depth: 12,
         grammarText: "E :: triple(C, C, C):1\nC :: sum(C, C):1 | mult(C, C):1 | A:1 | mix(C, C, C):1 | sin(C):2 | cos(C):2 | exp(C):1 | sqrt(C):1\nA :: bw:1 | rgb:1 | x:1 | y:1",
@@ -18,8 +22,9 @@ const presets = {
 };
 
 var defaultSeed = (Math.random()*2**32)>>>0;
-var defaultDepth = presets.default.depth;
-var defaultGrammarText = presets.default.grammarText;
+var defaultPreset = "test";
+var defaultDepth = presets[defaultPreset].depth;
+var defaultGrammarText = presets[defaultPreset].grammarText;
 
 const storageString = localStorage.getItem("randomart");
 if (storageString != null) {
@@ -131,6 +136,7 @@ function startWorker(useExprText) {
         seed: seed,
         grammarText: grammarText,
         type: "start",
+        renderGl: document.querySelector("input[name=gpu]").checked,
     };
     if (useExprText) {
         args.exprText = exprText;

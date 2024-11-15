@@ -1,5 +1,7 @@
 var random = Math.random;
 
+var nodeCount = 0;
+
 function xoshiro128ss(a, b, c, d) {
     return function() {
         let t = b << 9, r = b * 5;
@@ -21,10 +23,16 @@ function setRandomSeed(seed) {
 
 function nodeBw(forcedA) {
     const a = forcedA == undefined ? random() * 2 - 1 : forcedA;
+    const nodeId = nodeCount;
+    nodeCount++;
     return {
+        id: nodeId,
         arity: 0,
         toString() {
             return `${a}`;
+        },
+        toGlsl() {
+            return `vec3 node${nodeId} = vec3(${a}, ${a}, ${a});`;
         },
         eval(x, y) {
             return [a, a, a];
@@ -33,10 +41,16 @@ function nodeBw(forcedA) {
 }
 
 function nodeConstant(a) {
+    const nodeId = nodeCount;
+    nodeCount++;
     return {
+        id: nodeId,
         arity: 1,
         toString() {
             return `${a}`;
+        },
+        toGlsl() {
+            return `vec3 node${nodeId} = vec3(${a}, ${a}, ${a});`;
         },
         eval(x, y) {
             return [a, a, a];
@@ -48,10 +62,16 @@ function nodeRgb(forcedR, forcedG, forcedB) {
     const r = forcedR == undefined ? random() * 2 - 1 : forcedR;
     const g = forcedG == undefined ? random() * 2 - 1 : forcedG;
     const b = forcedB == undefined ? random() * 2 - 1 : forcedB;
+    const nodeId = nodeCount;
+    nodeCount++;
     return {
+        id: nodeId,
         arity: 0,
         toString() {
             return `rgb(${r}, ${g}, ${b})`;
+        },
+        toGlsl() {
+            return `vec3 node${nodeId} = vec3(${r}, ${g}, ${b});`;
         },
         eval(x, y) {
             return [r, g, b];
@@ -60,15 +80,46 @@ function nodeRgb(forcedR, forcedG, forcedB) {
 }
 
 function nodeX() {
-    return {arity: 0, toString() {return `x`;}, eval(x, y, t) {return [x, x, x];}}
+    const nodeId = nodeCount;
+    nodeCount++;
+    return {
+        id: nodeId,
+        arity: 0,
+        toString() {
+            return `x`;
+        },
+        toGlsl() {
+            return `vec3 node${nodeId} = vec3(uv.x, uv.x, uv.x);`;
+        },
+        eval(x, y) {
+            return [x, x, x];
+        }
+    }
 }
 
 function nodeY() {
-    return {arity: 0, toString() {return `y`;}, eval(x, y, t) {return [y, y, y];}}
+    const nodeId = nodeCount;
+    nodeCount++;
+    return {
+        id: nodeId,
+        arity: 0,
+        toString() {
+            return `y`;
+        },
+        toGlsl() {
+            return `vec3 node${nodeId} = vec3(uv.y, uv.y, uv.y);`;
+        },
+        eval(x, y) {
+            return [y, y, y];
+        }
+    }
 }
 
 function nodeUnary(subexpr, label, apply, min=-1, max=1, params=[]) {
+    const nodeId = nodeCount;
+    nodeCount++;
     return {
+        id: nodeId,
         arity: 1,
         toString() {
             if (params.length == 0) return `${label}(${subexpr.toString()})`;
@@ -77,6 +128,9 @@ function nodeUnary(subexpr, label, apply, min=-1, max=1, params=[]) {
                 argString.push(param.toString());
             }
             return `${label}(${argString.join(", ")})`;
+        },
+        toGlsl() {
+            return `${subexpr.toGlsl()}\nvec3 node${nodeId} = ${label}(node${subexpr.id});`;
         },
         eval(x, y) {
             const a = subexpr.eval(x, y);
@@ -110,10 +164,16 @@ function nodeSqrt(subexpr) {
 }
 
 function nodeBinary(left, right, label, apply, min=-1, max=1) {
+    const nodeId = nodeCount;
+    nodeCount++;
     return {
+        id: nodeId,
         arity: 2,
         toString() {
             return `${label}(${left.toString()}, ${right.toString()})`;
+        },
+        toGlsl() {
+            return `${left.toGlsl()}\n${right.toGlsl()}\nvec3 node${nodeId} = ${label}(node${left.id}, node${right.id});`;
         },
         eval(x, y) {
             const a = left.eval(x, y);
@@ -144,10 +204,16 @@ function nodeSinBin(left, right) {
 }
 
 function nodeTriple(first, second, third) {
+    const nodeId = nodeCount;
+    nodeCount++;
     return {
+        id: nodeId,
         arity: 3,
         toString() {
             return `triple(${first}, ${second}, ${third})`;
+        },
+        toGlsl() {
+            return `${first.toGlsl()}\n${second.toGlsl()}\n${third.toGlsl()}\nvec3 node${nodeId} = vec3(node${first.id}.x, node${second.id}.y, node${third.id}.z);`;
         },
         eval(x, y, t) {
             return [first.eval(x, y)[0], second.eval(x, y)[1], third.eval(x, y)[2]];
@@ -156,7 +222,10 @@ function nodeTriple(first, second, third) {
 }
 
 function nodeTernary(left, middle, right, label, apply, min=-1, max=1, params=[]) {
+    const nodeId = nodeCount;
+    nodeCount++;
     return {
+        id: nodeId,
         arity: 3,
         toString() {
             if (params.length == 0) return `${label}(${left.toString()}, ${middle.toString()}, ${right.toString()})`;
@@ -165,6 +234,9 @@ function nodeTernary(left, middle, right, label, apply, min=-1, max=1, params=[]
                 argString.push(param.toString());
             }
             return `${label}(${argString.join(", ")})`;
+        },
+        toGlsl() {
+            return `${left.toGlsl()}\n${middle.toGlsl()}\n${right.toGlsl()}\nvec3 node${nodeId} = humtriple;`;
         },
         eval(x, y, t) {
             const a = left.eval(x, y);
@@ -422,6 +494,7 @@ function parseExpr(exprText) {
 
 var canvas;
 var context;
+var gl;
 var expr;
 var iteration;
 var width;
@@ -430,9 +503,11 @@ const steps = 8;
 var pixels;
 var step;
 var timeStart;
+var renderGl;
 
 onmessage = (event) => {
     if (event.data.type == "start") {
+        renderGl = event.data.renderGl;
         setRandomSeed(event.data.seed);
         if (event.data.exprText != undefined) {
             expr = parseExpr(event.data.exprText);
@@ -446,7 +521,11 @@ onmessage = (event) => {
         postMessage({type: "expr", expr: expr.toString()});
         if (event.data.canvas != undefined) {
             canvas = event.data.canvas;
-            context = event.data.canvas.getContext("2d");
+            if (renderGl) {
+                gl = canvas.getContext("webgl2", { "preserveDrawingBuffer": true });
+            } else {
+                context = canvas.getContext("2d");
+            }
         }
         iteration = 0;
         width = event.data.width;
@@ -462,7 +541,41 @@ onmessage = (event) => {
         iteration = 0;
         timeStart = new Date();
     }
-    if (event.data.type == "start" || event.data.type == "next") {
+    if (renderGl && event.data.type == "start") {
+        canvas.width = width;
+        canvas.height = height;
+        console.log(expr.toGlsl());
+        const shaderText = `precision highp float;
+        varying vec2 uv;
+        void main() {
+            ${expr.toGlsl()}
+            gl_FragColor.xyz = node${expr.id};
+            gl_FragColor.w = 1.0;
+        }`;
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, `attribute vec2 position; varying vec2 uv; void main() {uv = (position * 0.5) + 0.5; gl_Position = vec4(position, 0, 1);}`);
+        gl.compileShader(vertexShader);
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, shaderText);
+        gl.compileShader(fragmentShader);
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        gl.viewport(0, 0, width, height);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        canvas.convertToBlob().then(blob => {
+            postMessage({type: "progress", current: 1, total: 1,
+                blob: blob, width: width, height: height,
+                elapsed: ((new Date()) - timeStart) / 1000});
+        });
+    }
+    if (!renderGl && (event.data.type == "start" || event.data.type == "next")) {        
         if (step < 1) return;
         iteration++;
         const r = Math.round(step);
