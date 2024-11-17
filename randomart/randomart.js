@@ -189,3 +189,22 @@ window.addEventListener("mousemove", () => {
         cursorTimeout = null;
     }, 500);
 });
+
+var focusedInputs = new Set();
+function updateDashboardFocus() {
+    if (focusedInputs.size == 0) {
+        document.body.classList.remove("has-focused-inputs");
+    } else {
+        document.body.classList.add("has-focused-inputs");
+    }
+}
+document.querySelectorAll("input,textarea").forEach(input => {
+    input.addEventListener("focusin", (event) => {
+        focusedInputs.add(input.name);
+        updateDashboardFocus();
+    });
+    input.addEventListener("focusout", (event) => {
+        focusedInputs.delete(input.name)
+        updateDashboardFocus();
+    });
+});

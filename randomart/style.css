@@ -74,6 +74,7 @@ body.show-cursor {
 }
 
 body.show-cursor #dashboard,
+body.has-focused-inputs #dashboard,
 #dashboard:active,
 #dashboard:focus,
 #dashboard:hover {
