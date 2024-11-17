@@ -27,10 +27,11 @@
             <textarea id="input-grammar" name="grammar" rows="6"></textarea>
             <div>
                 <span class="preset-label">presets:</span>
-                <span class="preset-link" onclick="loadPreset('default')">default</span>
+                <span class="preset-link" onclick="loadPreset('basic')">basic</span>
                 <span class="preset-link" onclick="loadPreset('all')">all</span>
                 <span class="preset-link" onclick="loadPreset('waves')">waves</span>
                 <span class="preset-link" onclick="loadPreset('gradients')">gradients</span>
+                <span class="preset-link" onclick="loadPreset('animated')">animated</span>
             </div>
             <details id="instructions">
                 <summary><u>instructions</u></summary>
@@ -40,7 +41,7 @@
                     <li>multiple nodes can be separated with <code>|</code></li>
                     <li>the first rule must be named <code>A</code></li>
                     <li>there must be a rule named <code>Z</code> containing terminal nodes only</li>
-                    <li>terminal nodes are <code>x</code>, <code>y</code>, <code>rgb</code> (random color) and <code>bw</code> (random black and white color)</li>
+                    <li>terminal nodes are <code>x</code>, <code>y</code>, <code>t</code>, <code>rgb</code> (random color) and <code>bw</code> (random grey color)</li>
                     <li>unary nodes are <code>sin(X)</code>, <code>cos(X)</code>, <code>tan(X)</code>, <code>exp(X)</code>, <code>sqrt(X)</code></li>
                     <li>binary nodes are <code>sum(X,Y)</code>, <code>mult(X,Y)</code>, <code>mod(X,Y)</code> (division remainder)</li>
                     <li>ternary nodes are <code>triple(X,Y,Z)</code> (build color taking red from X, green from Y and blue from Z), <code>mix(X,Y,Z)</code> (blend Y and Z, controlled by X), <code>level(X,Y,Z)</code> (choose Y or Z based on X value)</li>

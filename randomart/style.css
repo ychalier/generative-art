@@ -74,6 +74,7 @@ body.show-cursor {
 }
 
 body.show-cursor #dashboard,
+body.has-focused-inputs #dashboard,
 #dashboard:active,
 #dashboard:focus,
 #dashboard:hover {
@@ -193,4 +194,16 @@ progress {
 ul {
     padding-left: 1em;
     margin: .2rem 0 .4rem 0;
+}
+
+@media (max-width: 800px) {
+    #dashboard {
+        height: fit-content;
+    }
+    #vspace {
+        display: none;
+    }
+    #footer {
+        margin-top: .4rem;
+    }
 }
