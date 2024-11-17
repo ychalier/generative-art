@@ -1,6 +1,24 @@
 var random = Math.random;
 
 var nodeCount = 0;
+var canvas;
+var context;
+var gl;
+var expr;
+var iteration;
+var width;
+var height;
+var steps;
+var pixels;
+var step;
+var timeStart;
+var renderGl;
+var shaderText;
+var vertexShader;
+var fragmentShader;
+var program;
+var tLocation;
+var hasTimeDependency = false;
 
 function xoshiro128ss(a, b, c, d) {
     return function() {
@@ -34,7 +52,7 @@ function nodeBw(forcedA) {
         toGlsl() {
             return `vec3 node${nodeId} = vec3(${a.toFixed(17)}, ${a.toFixed(17)}, ${a.toFixed(17)});`;
         },
-        eval(x, y) {
+        eval(x, y, t) {
             return [a, a, a];
         }
     }
@@ -52,7 +70,7 @@ function nodeConstant(a) {
         toGlsl() {
             return `vec3 node${nodeId} = vec3(${a.toFixed(17)}, ${a.toFixed(17)}, ${a.toFixed(17)});`;
         },
-        eval(x, y) {
+        eval(x, y, t) {
             return [a, a, a];
         }
     }
@@ -73,7 +91,7 @@ function nodeRgb(forcedR, forcedG, forcedB) {
         toGlsl() {
             return `vec3 node${nodeId} = vec3(${r.toFixed(17)}, ${g.toFixed(17)}, ${b.toFixed(17)});`;
         },
-        eval(x, y) {
+        eval(x, y, t) {
             return [r, g, b];
         }
     }
@@ -91,7 +109,7 @@ function nodeX() {
         toGlsl() {
             return `vec3 node${nodeId} = 2.0 * vec3(uv.x, uv.x, uv.x) - 1.0;`;
         },
-        eval(x, y) {
+        eval(x, y, t) {
             return [x, x, x];
         }
     }
@@ -109,8 +127,27 @@ function nodeY() {
         toGlsl() {
             return `vec3 node${nodeId} = 2.0 * vec3(1.0 - uv.y, 1.0 - uv.y, 1.0 - uv.y) - 1.0;`;
         },
-        eval(x, y) {
+        eval(x, y, t) {
             return [y, y, y];
+        }
+    }
+}
+
+function nodeT() {
+    const nodeId = nodeCount;
+    nodeCount++;
+    hasTimeDependency = true;
+    return {
+        id: nodeId,
+        arity: 0,
+        toString() {
+            return `t`;
+        },
+        toGlsl() {
+            return `vec3 node${nodeId} = vec3(t, t, t);`;
+        },
+        eval(x, y, t) {
+            return [t, t, t];
         }
     }
 }
@@ -135,8 +172,8 @@ function nodeUnary(subexpr, label, apply, min=-1, max=1, params=[], glCode=undef
             }
             return `${subexpr.toGlsl()}\nvec3 node${nodeId} = ${label}(node${subexpr.id});`;
         },
-        eval(x, y) {
-            const a = subexpr.eval(x, y);
+        eval(x, y, t) {
+            const a = subexpr.eval(x, y, t);
             return [
                 2 * (apply(a[0]) - min) / (max - min) - 1,
                 2 * (apply(a[1]) - min) / (max - min) - 1,
@@ -195,9 +232,9 @@ function nodeBinary(left, right, label, apply, min=-1, max=1, glCode=undefined) 
             }
             return `${left.toGlsl()}\n${right.toGlsl()}\nvec3 node${nodeId} = ${label}(node${left.id}, node${right.id});`;
         },
-        eval(x, y) {
-            const a = left.eval(x, y);
-            const b = right.eval(x, y);
+        eval(x, y, t) {
+            const a = left.eval(x, y, t);
+            const b = right.eval(x, y, t);
             return [
                 2 * (apply(a[0], b[0]) - min) / (max - min) - 1,
                 2 * (apply(a[1], b[1]) - min) / (max - min) - 1,
@@ -238,7 +275,7 @@ function nodeTriple(first, second, third) {
             return `${first.toGlsl()}\n${second.toGlsl()}\n${third.toGlsl()}\nvec3 node${nodeId} = vec3(node${first.id}.x, node${second.id}.y, node${third.id}.z);`;
         },
         eval(x, y, t) {
-            return [first.eval(x, y)[0], second.eval(x, y)[1], third.eval(x, y)[2]];
+            return [first.eval(x, y, t)[0], second.eval(x, y, t)[1], third.eval(x, y, t)[2]];
         }
     }
 }
@@ -264,9 +301,9 @@ function nodeTernary(left, middle, right, label, apply, min=-1, max=1, params=[]
             throw new Error("Not implemented!");
         },
         eval(x, y, t) {
-            const a = left.eval(x, y);
-            const b = middle.eval(x, y);
-            const c = right.eval(x, y);
+            const a = left.eval(x, y, t);
+            const b = middle.eval(x, y, t);
+            const c = right.eval(x, y, t);
             return [
                 2 * (apply(a[0], b[0], c[0]) - min) / (max - min) - 1,
                 2 * (apply(a[1], b[1], c[1]) - min) / (max - min) - 1,
@@ -367,6 +404,9 @@ function parseGrammar(grammarText) {
                 case "y":
                     ruleNode = nodeY;
                     break;
+                case "t":
+                    ruleNode = nodeT;
+                    break;
             }
             let ruleArgs = null;
             if (tertiarySplit[2] != undefined) {
@@ -381,7 +421,8 @@ function parseGrammar(grammarText) {
                 }
             } else {
                 const fakeNode = ruleNode();
-                if ((ruleArgs == null && fakeNode.arity != 0) || (ruleArgs != null && ruleArgs.length < fakeNode.arity)) {
+                if ((ruleArgs == null && fakeNode.arity != 0) 
+                    || (ruleArgs != null && ruleArgs.length < fakeNode.arity)) {
                     throw new Error(`Not enough arguments at line ${lineIndex+1} for rule ${ruleIndex+1}`);
                 }
             }
@@ -427,7 +468,9 @@ function expandGrammar(grammar, key, depth) {
     const fakeNodeArity = rule[0]().arity;
     if (rule[0] == nodeBw && rule[1] == null) {
         //pass
-    } else if ((rule[0] == nodeConstant || rule[0] == nodeBw) && rule[1].length == 1 && rule[1][0].match(/^\d(?:\.\d+)?/)) {
+    } else if ((rule[0] == nodeConstant || rule[0] == nodeBw) 
+        && rule[1].length == 1
+        && rule[1][0].match(/^\d(?:\.\d+)?/)) {
         args.push(parseFloat(rule[1][0]));
     } else if (rule[1] != null) {
         for (let j = 0; j < fakeNodeArity; j++) {
@@ -444,7 +487,7 @@ function expandGrammar(grammar, key, depth) {
 }
 
 function ravelNode(bwNode) {
-    return bwNode.eval(0, 0)[0];
+    return bwNode.eval(0, 0, 0)[0];
 }
 
 function parseExpr(exprText) {
@@ -459,6 +502,8 @@ function parseExpr(exprText) {
                 return nodeX();
             case "y":
                 return nodeY();
+            case "t":
+                return nodeT();
             default:
                 return nodeBw(parseFloat(nodeName));
         }
@@ -526,47 +571,63 @@ function parseExpr(exprText) {
     }
 }
 
-var canvas;
-var context;
-var gl;
-var expr;
-var iteration;
-var width;
-var height;
-const steps = 8;
-var pixels;
-var step;
-var timeStart;
-var renderGl;
-var shaderText;
-
-onmessage = (event) => {
-    if (event.data.type == "start") {
-        renderGl = event.data.renderGl;
-        setRandomSeed(event.data.seed);
-        if (event.data.exprText != undefined) {
-            expr = parseExpr(event.data.exprText);
-        } else if (event.data.grammarText != undefined && event.data.depth != undefined) {
-            const grammar = parseGrammar(event.data.grammarText);
-            expr = expandGrammar(grammar, "A", event.data.depth);
+function setup(grammarText, depth, seed, exprText) {
+    setRandomSeed(seed);
+    if (exprText != undefined) {
+        expr = parseExpr(exprText);
+    } else if (grammarText != undefined && depth != undefined) {
+        const grammar = parseGrammar(grammarText);
+        expr = expandGrammar(grammar, "A", depth);
+    }
+    if (expr == undefined) {
+        throw new Error("Could not build expression");
+    }
+    if (canvas != undefined) {
+        if (renderGl) {
+            gl = canvas.getContext("webgl2", { "preserveDrawingBuffer": true });
+        } else {
+            context = canvas.getContext("2d");
         }
-        if (expr == undefined) {
-            throw new Error("Could not build expression");
-        }
-        if (event.data.canvas != undefined) {
-            canvas = event.data.canvas;
-            if (renderGl) {
-                gl = canvas.getContext("webgl2", { "preserveDrawingBuffer": true });
-            } else {
-                context = canvas.getContext("2d");
-            }
-        }
-        // console.log(expr.toGlsl());
-        shaderText = `precision lowp float;\nvarying vec2 uv;\nvoid main() {\n${expr.toGlsl()}\ngl_FragColor.xyz = (node${expr.id} + 1.0) / 2.0;\ngl_FragColor.w = 1.0;\n}`;
-        postMessage({type: "expr", expr: expr.toString(), shader: shaderText});
-        iteration = 0;
-        width = event.data.width;
-        height = event.data.height;
+    }
+    if (renderGl) {
+        vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, [
+            "attribute vec2 position;",
+            "varying vec2 uv;",
+            "void main() {",
+            "uv = (position * 0.5) + 0.5;",
+            "gl_Position = vec4(position, 0, 1);",
+            "}",
+        ].join("\n"));
+        gl.compileShader(vertexShader);
+        fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        shaderText = [
+            "precision lowp float;",
+            "varying vec2 uv;",
+            "uniform float t;",
+            "void main() {",
+            expr.toGlsl(),
+            `gl_FragColor.xyz = (node${expr.id} + 1.0) / 2.0;`,
+            "gl_FragColor.w = 1.0;",
+            "}",
+        ].join("\n");
+        gl.shaderSource(fragmentShader, shaderText);
+        gl.compileShader(fragmentShader);
+        program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        tLocation = gl.getUniformLocation(program, "t");
+        gl.useProgram(program);
+        gl.uniform1f(tLocation, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+        gl.bufferData(gl.ARRAY_BUFFER, 
+            new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+            gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        steps = 1;
+    } else {
         pixels = [];
         for (let i = 0; i < height; i++) {
             pixels.push([]);
@@ -574,39 +635,25 @@ onmessage = (event) => {
                 pixels[i].push(null);
             }
         }
-        step = 2 ** (steps - 1);
-        iteration = 0;
-        timeStart = new Date();
+        steps = 8;
+        step = 2 ** steps;
     }
-    if (renderGl && event.data.type == "start") {
-        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vertexShader, `attribute vec2 position; varying vec2 uv; void main() {uv = (position * 0.5) + 0.5; gl_Position = vec4(position, 0, 1);}`);
-        gl.compileShader(vertexShader);
-        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fragmentShader, shaderText);
-        gl.compileShader(fragmentShader);
-        const program = gl.createProgram();
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-        gl.useProgram(program);
-        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(0);
-        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    iteration = 0;
+    timeStart = new Date();
+}
+
+function render() {
+    const t = Math.sin((new Date() - timeStart) / 1000);
+    iteration++;
+    step = Math.max(1, step / 2);
+    if (renderGl) {
         canvas.width = width;
         canvas.height = height;
+        gl.uniform1f(tLocation, t);
         gl.viewport(0, 0, width, height);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
-        canvas.convertToBlob().then(blob => {
-            postMessage({type: "progress", current: 1, total: 1,
-                blob: blob, width: width, height: height,
-                elapsed: ((new Date()) - timeStart) / 1000});
-        });
-    }
-    if (!renderGl && (event.data.type == "start" || event.data.type == "next")) {
-        if (step < 1) return;
-        iteration++;
+        return [width, height];
+    } else {
         const r = Math.round(step);
         const imageWidth = Math.floor(width / r);
         const imageHeight = Math.floor(height / r);
@@ -614,7 +661,10 @@ onmessage = (event) => {
         for (let i = 0; i < height; i += r) {
             for (let j = 0; j < width; j += r) {
                 if (pixels[i][j] == null) {
-                    pixels[i][j] = expr.eval((j / width) * 2 - 1, (i / height) * 2 - 1);
+                    pixels[i][j] = expr.eval(
+                        (j / width) * 2 - 1,
+                        (i / height) * 2 - 1,
+                        t);
                 }
                 const k = Math.round((i / r) * imageWidth + (j / r)) * 4;
                 imageData.data[k + 0] = (pixels[i][j][0] + 1) * 128;
@@ -626,11 +676,37 @@ onmessage = (event) => {
         canvas.width = imageWidth;
         canvas.height = imageHeight;
         context.putImageData(imageData, 0, 0);
+        return [imageWidth, imageHeight];
+    }
+}
+
+onmessage = (event) => {
+    if (event.data.type == "start") {
+        canvas = event.data.canvas; 
+        width = event.data.width; 
+        height = event.data.height; 
+        renderGl = event.data.renderGl; 
+        setup(
+            event.data.grammarText,
+            event.data.depth,
+            event.data.seed,
+            event.data.exprText);
+        // TODO: directly export as blob?
+        postMessage({type: "expr", expr: expr.toString(), shader: shaderText});
+    }
+    if (event.data.type == "start" || event.data.type == "next") {
+        const size = render();
         canvas.convertToBlob().then(blob => {
             postMessage({type: "progress", current: iteration, total: steps,
-                blob: blob, width: imageWidth, height: imageHeight,
+                blob: blob, width: size[0], height: size[1],
                 elapsed: ((new Date()) - timeStart) / 1000});
         });
-        step /= 2;
+        if (hasTimeDependency) {
+            function animateRender() {
+                render();
+                requestAnimationFrame(animateRender);
+            }
+            requestAnimationFrame(animateRender);
+        }
     }
 }

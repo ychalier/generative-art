@@ -1,5 +1,5 @@
 const presets = {
-    default: {
+    basic: {
         depth: 12,
         grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | exp(B):1 | sqrt(B):1 | tan(B):1 | sum(B,B):1 | mult(B,B):1| mix(B,B,B):1\nZ :: x:1 | y:1 | rgb:1",
     },
@@ -15,10 +15,14 @@ const presets = {
         depth: 5,
         grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | mix(B,B,B):2\nZ :: x:1 | y:1 | rgb:1"
     },
+    animated: {
+        depth: 12,
+        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | exp(B):1 | sqrt(B):1 | tan(B):1 | sum(B,B):1 | mult(B,B):1| mix(B,B,B):1\nZ :: x:1 | y:1 | rgb:1 | t:1",
+    }
 };
 
 var defaultSeed = (Math.random()*2**32)>>>0;
-var defaultPreset = "default";
+var defaultPreset = "basic";
 var defaultDepth = presets[defaultPreset].depth;
 var defaultGrammarText = presets[defaultPreset].grammarText;
 
@@ -100,11 +104,13 @@ function createWorker() {
                 const progress = document.getElementById("progress");
                 progress.value = event.data.current;
                 progress.max = event.data.total;
-                progress.style.display = event.data.current == event.data.total ? "none": "unset";
+                progress.style.display = event.data.current >= event.data.total ? "none": "unset";
                 document.getElementById("elapsed").textContent = `${event.data.elapsed.toFixed(1)}s`;
                 document.getElementById("size").textContent = `${event.data.width}×${event.data.height}`;
                 blob = event.data.blob;
-                worker.postMessage({type: "next"});
+                if (event.data.current < event.data.total) {
+                    worker.postMessage({type: "next"});
+                }
                 break;
         }
     };
