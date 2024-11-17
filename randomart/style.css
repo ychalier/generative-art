@@ -195,3 +195,15 @@ ul {
     padding-left: 1em;
     margin: .2rem 0 .4rem 0;
 }
+
+@media (max-width: 800px) {
+    #dashboard {
+        height: fit-content;
+    }
+    #vspace {
+        display: none;
+    }
+    #footer {
+        margin-top: .4rem;
+    }
+}
