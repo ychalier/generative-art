@@ -135,28 +135,33 @@ async function main() {
 
     const randomSeed = Math.floor(Math.random() * 1000);
     const humidityNoise = new PerlinNoise((Math.random() * (2 ** 32 - 1))>>>0, 512, 0, 2, 0.5, 0, 0, 1, 1);
+    const densityNoise = new PerlinNoise((Math.random() * (2 ** 32 - 1))>>>0, 512, 0, 2, 0.5, 0, 0, 1, 1);
     const baseNoise = new PerlinNoise((Math.random() * (2 ** 32 - 1))>>>0, 128, 0, 2, 0.5, 0, 0, 1, 1);
 
-    let offsetX = 0;
-
-    function draw() {
-        offsetX++;
-        context.clearRect(0, 0, width, height);
-        for (let i = 0; i < height; i++) {
-            for (let j = 0; j < width; j++) {   
-                if (Math.random() < 0.001) {
-                    const humidity = humidityNoise.sample(j + offsetX, i);
-                    if (humidity < 0.5) continue;
-                    let noise = baseNoise.sample(j + offsetX, i);
+ 
+    context.clearRect(0, 0, width, height);
+    for (let i = 0; i < height; i++) {
+        for (let j = 0; j < width; j++) {   
+            if (Math.random() < 0.001) {
+                const humidity = humidityNoise.sample(j, i);
+                if (humidity > 0.5) {
+                    let noise = baseNoise.sample(j, i);
                     const variant = Math.floor(noise * 3);
                     context.drawSprite(assets.trees, 0, variant, j, i);
                 }
             }
+            if (Math.random() < 0.005) {
+                const density = Math.pow(densityNoise.sample(j / 10, i / 10), 3);
+                if (Math.random() < density) {
+                    const humidity = humidityNoise.sample(j, i);
+                    if (humidity < 0.4) {
+                        const variant = Math.floor(Math.random() * 3);
+                        context.drawSprite(assets.trees, 1, variant, j, i);
+                    }
+                };
+            }
         }
-        // requestAnimationFrame(draw);
     }
-
-    draw();
     
 }
 
