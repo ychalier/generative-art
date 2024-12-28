@@ -146,8 +146,15 @@ async function main() {
                 const humidity = humidityNoise.sample(j, i);
                 if (humidity > 0.5) {
                     let noise = baseNoise.sample(j, i);
-                    const variant = Math.floor(noise * 3);
-                    context.drawSprite(assets.trees, 0, variant, j, i);
+                    let variant;
+                    if (noise < 0.4) {
+                        variant = 0;
+                    } else if (noise < 0.8) {
+                        variant = 1;
+                    } else {
+                        variant = 2;
+                    }
+                    context.drawSprite(assets.trees, 2, variant, j, i);
                 }
             }
             if (Math.random() < 0.005) {
