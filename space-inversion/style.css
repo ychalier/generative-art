@@ -25,8 +25,8 @@ body {
 
 #dashboard {
     position: fixed;
-    top: 0;
-    left: 0;
+    top: .4rem;
+    left: .4rem;
     z-index: 2;
     padding: 1rem;
     background: white;
@@ -34,9 +34,27 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    opacity: 0;
 }
 
 .form-input {
     display: flex;
     flex-direction: column;
+}
+
+body.show-cursor #dashboard,
+body.has-focused-inputs #dashboard,
+#dashboard:active,
+#dashboard:focus,
+#dashboard:hover {
+    opacity: 1;
+}
+
+
+body {
+    cursor: none;
+}
+
+body.show-cursor {
+    cursor: unset;
 }
