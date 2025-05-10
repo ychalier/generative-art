@@ -12,5 +12,6 @@ Name | Illustration
 [Molnart](molnart) | [![](molnart/molnart.gif)](molnart)
 [Persistence of Vision](persistence-of-vision) | [![](persistence-of-vision/pov.gif)](persistence-of-vision)
 [Randomart](randomart) | [![](randomart/randomart.gif)](randomart)
+[Space Inversion](space-inversion) | [![](space-inversion/space-inversion.gif)](space-inversion)
 
 You may also want to check the [IDEAS.md](IDEAS.md) document for future developments.
