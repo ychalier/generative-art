@@ -203,6 +203,13 @@ canvas.addEventListener("touchmove", (e) => {
     }
 }, { passive: false });
 
+canvas.addEventListener("touchend", (e) => {
+    if (e.touches.length === 1) {
+        lastMouse.x = e.touches[0].clientX;
+        lastMouse.y = e.touches[0].clientY;
+    }
+})
+
 window.addEventListener("resize", () => {
     width = window.innerWidth;
     height = window.innerHeight;
