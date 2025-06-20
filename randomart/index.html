@@ -33,6 +33,7 @@
                 <span class="preset-link" onclick="loadPreset('gradients')">gradients</span>
                 <span class="preset-link" onclick="loadPreset('animated')">animated</span>
                 <span class="preset-link" onclick="loadPreset('audio')">audio</span>
+                <span class="preset-link" onclick="loadPreset('audioDetailed')">audio+</span>
             </div>
             <details id="instructions">
                 <summary><u>instructions</u></summary>
@@ -42,13 +43,32 @@
                     <li>multiple nodes can be separated with <code>|</code></li>
                     <li>the first rule must be named <code>A</code></li>
                     <li>there must be a rule named <code>Z</code> containing terminal nodes only</li>
-                    <li>terminal nodes are <code>x</code>, <code>y</code>, <code>t</code>, <code>rgb</code> (random color) and <code>bw</code> (random grey color)</li>
+                    <li>terminal nodes are <code>x</code>, <code>y</code>, <code>t</code>, <code>rgb</code> (random color), <code>bw</code> (random grey color), or any audio node (see below)</li>
                     <li>unary nodes are <code>sin(X)</code>, <code>cos(X)</code>, <code>tan(X)</code>, <code>exp(X)</code>, <code>sqrt(X)</code></li>
                     <li>binary nodes are <code>sum(X,Y)</code>, <code>mult(X,Y)</code>, <code>mod(X,Y)</code> (division remainder)</li>
                     <li>ternary nodes are <code>triple(X,Y,Z)</code> (build color taking red from X, green from Y and blue from Z), <code>mix(X,Y,Z)</code> (blend Y and Z, controlled by X), <code>level(X,Y,Z)</code> (choose Y or Z based on X value)</li>
                     <li>computations are scaled between -1 and 1, which mostly impacts <code>tan</code>, <code>exp</code>, <code>sqrt</code> and <code>sum</code></li>
                     <li><code>sin</code> and <code>cos</code> can accept a frequency argument, and even a phase argument; if omitted, they are randomly generated</li>
                     <li><code>level</code> can accept a threshold argument; if omitted, it is randomly generated</li>
+                    <li>audio reactive animations can be done by introducing the following audio variables:
+                        <table id="audioInstructionsTable">
+                            <thead>
+                                <tr><th>var</th><th colspan="3">range</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>low</code></td><td>0 Hz</td><td> &le; f &lt;</td><td> 250 Hz</td></tr>
+                                <tr><td><code>mid</code></td><td>250 Hz</td><td> &le; f &lt;</td><td> 4 kHz</td></tr>
+                                <tr><td><code>hi</code></td><td>4 kHz</td><td> &le; f &lt;</td><td> 20 kHz</td></tr>
+                                <tr><td><code>subbass</code></td><td>0 Hz</td><td> &le; f &lt;</td><td> 60 Hz</td></tr>
+                                <tr><td><code>bass</code></td><td>60 Hz</td><td> &le; f &lt;</td><td> 250 Hz</td></tr>
+                                <tr><td><code>lowmidrange</code></td><td>250 Hz</td><td> &le; f &lt;</td><td> 500 Hz</td></tr>
+                                <tr><td><code>midrange</code></td><td>500 Hz</td><td> &le; f &lt;</td><td> 2 kHz</td></tr>
+                                <tr><td><code>uppermidrange</code></td><td>2 kHz</td><td> &le; f &lt;</td><td> 4 kHz</td></tr>
+                                <tr><td><code>presence</code></td><td>4 kHz</td><td> &le; f &lt;</td><td> 6 kHz</td></tr>
+                                <tr><td><code>brilliance</code></td><td>6 kHz</td><td> &le; f &lt;</td><td> 20 kHz</td></tr>
+                            </tbody>
+                        </table>
+                    </li>
                 </ul>
             </details>
             <div id="buttons">
@@ -61,6 +81,10 @@
             <div id="audio">
                 <span>audio</span>
                 <input type="file" id="audioFileInput" accept="audio/*" />
+                <select id="audioAggSelect">
+                    <option value="max" selected>max</option>
+                    <option value="average">average</option>
+                </select>
                 <canvas id="fftCanvas"></canvas>
                 <audio id="audioElement" controls></audio>
             </div>

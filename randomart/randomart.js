@@ -20,13 +20,17 @@ const presets = {
         grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | exp(B):1 | sqrt(B):1 | tan(B):1 | sum(B,B):1 | mult(B,B):1| mix(B,B,B):1\nZ :: x:1 | y:1 | rgb:1 | t:1",
     },
     audio: {
-        depth: 4,
-        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | mix(B,B,B):2\nZ :: x:1 | y:1 | rgb:1 | low:1 | mid:1 | hi:1"
+        depth: 12,
+        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | exp(B):1 | sqrt(B):1 | tan(B):1 | sum(B,B):1 | mult(B,B):1| mix(B,B,B):1\nZ :: x:1 | y:1 | rgb:1 | low:1 | mid:1 | hi:1"
+    },
+    audioDetailed: {
+        depth: 12,
+        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | exp(B):1 | sqrt(B):1 | tan(B):1 | sum(B,B):1 | mult(B,B):1| mix(B,B,B):1\nZ :: x:1 | y:1 | rgb:1 | subbass:1 | bass:1 | lowmidrange:1 | midrange:1 | uppermidrange:1 | presence:1 | brilliance:1"
     }
 };
 
 var defaultSeed = (Math.random()*2**32)>>>0;
-var defaultPreset = "audio";
+var defaultPreset = "basic";
 var defaultDepth = presets[defaultPreset].depth;
 var defaultGrammarText = presets[defaultPreset].grammarText;
 
@@ -47,16 +51,44 @@ const exprText = params.has("expr") ? params.get("expr") : undefined;
 document.querySelector("input[name=depth]").value = depth;
 document.querySelector("input[name=seed]").value = seed;
 document.querySelector("textarea[name=grammar]").value = grammarText;
+toggleAudioContainer();
+
+function toggleAudioContainer() {
+    const currentGrammarText = document.querySelector("textarea[name=grammar]").value;
+    const audioContainer = document.getElementById("audio");
+    let includesAudioVariable = false;
+    for (const varname of ["low", "mid", "hi", "subbass", "bass", "lowmidrange", "midrange", "uppermidrange", "presence", "brilliance"]) {
+        if (currentGrammarText.includes(varname + ":")) {
+            includesAudioVariable = true;
+            break;
+        }
+    }
+    if (includesAudioVariable) {
+        audioContainer.classList.remove("hidden");
+    } else {
+        audioContainer.classList.add("hidden");
+    }
+}
 
 function loadPreset(presetName) {
     const preset = presets[presetName];
     document.querySelector("input[name=depth]").value = preset.depth;
     document.querySelector("textarea[name=grammar]").value = preset.grammarText;
+    toggleAudioContainer();
 }
 
 var exprString;
 var shaderString;
 var blob;
+
+function getSelectedOption(select) {
+    for (const option of select.querySelectorAll("option")) {
+        if (option.selected) {
+            return option.value;
+        }
+    }
+    return null;
+}
 
 function showToast(event, message) {
     const toast = document.body.appendChild(document.createElement("div"));
@@ -163,6 +195,7 @@ startWorker(true);
 document.getElementById("button-generate").addEventListener("click", event => {
     depth = parseInt(document.querySelector("input[name=depth]").value);
     grammarText = document.querySelector("textarea[name=grammar]").value.trim();
+    toggleAudioContainer();
     seed = (Math.random()*2**32)>>>0;
     document.querySelector("input[name=seed]").value = seed;
     worker.terminate();
@@ -174,6 +207,7 @@ document.getElementById("button-generate").addEventListener("click", event => {
 document.getElementById("button-render").addEventListener("click", event => {
     depth = parseInt(document.querySelector("input[name=depth]").value);
     grammarText = document.querySelector("textarea[name=grammar]").value.trim();
+    toggleAudioContainer();
     seed = parseInt(document.querySelector("input[name=seed]").value);
     worker.terminate();
     createWorker();
@@ -216,11 +250,6 @@ document.querySelectorAll("input,textarea").forEach(input => {
 const audioFileInput = document.getElementById("audioFileInput");
 const audioElement = document.getElementById("audioElement");
 const fftCanvas = document.getElementById("fftCanvas");
-
-const fftCanvasBounds = fftCanvas.getBoundingClientRect();
-fftCanvas.width = fftCanvasBounds.width;
-fftCanvas.height = fftCanvasBounds.height;
-
 const fftCtx = fftCanvas.getContext("2d");
 
 let audioContext;
@@ -262,10 +291,28 @@ audioElement.addEventListener("pause", () => {
 });
 
 function drawFft() {
+    const fftCanvasBounds = fftCanvas.getBoundingClientRect();
+    fftCanvas.width = fftCanvasBounds.width;
+    fftCanvas.height = 32;
+
     const binsVars = {
-        low: {min: 0, max: 400, value: 0},
-        mid: {min: 400, max: 3000, value: 0},
-        hi: {min: 3000, max: 999999, value: 0},
+        low: {min: 0, max: 250},
+        mid: {min: 250, max: 4000},
+        hi: {min: 4000, max: 20000},
+        subbass: {min: 0, max: 60},
+        bass: {min: 60, max: 250},
+        lowmidrange: {min: 250, max: 500},
+        midrange: {min: 500, max: 2000},
+        uppermidrange: {min: 2000, max: 4000},
+        presence: {min: 4000, max: 6000},
+        brilliance: {min: 6000, max: 20000},
+    }
+
+    for (const varname in binsVars) {
+        binsVars[varname].total = 0;
+        binsVars[varname].count = 0;
+        binsVars[varname].currentMax = 0;
+        binsVars[varname].value = 0;
     }
 
     audioAnimationId = requestAnimationFrame(drawFft);
@@ -278,10 +325,31 @@ function drawFft() {
         const frequency = i * sampleRate / audioAnalyser.fftSize;
         for (const varname in binsVars) {
             if (frequency >= binsVars[varname].min && frequency < binsVars[varname].max) {
-                binsVars[varname].value = Math.max(binsVars[varname].value, normalizedData[i]);
+                binsVars[varname].total += normalizedData[i];
+                binsVars[varname].count++;
+                binsVars[varname].currentMax = Math.max(binsVars[varname].currentMax, normalizedData[i]);
             }
         }
     }
+
+    const audioAggMethod = getSelectedOption(document.getElementById("audioAggSelect"));
+    switch(audioAggMethod) {
+        case "max":
+            for (const varname in binsVars) {
+                if (binsVars[varname].count > 0) {
+                    binsVars[varname].value = binsVars[varname].total / binsVars[varname].count;
+                }
+            }
+            break;
+        case "average":
+            for (const varname in binsVars) {
+                binsVars[varname].value = binsVars[varname].currentMax;
+            }
+            break;
+        default:
+            console.warn("Unkown audio agg method:", audioAggMethod);
+            break;
+    }    
 
     fftCtx.clearRect(0, 0, fftCanvas.width, fftCanvas.height);
     const barWidth = 2 * fftCanvas.width / audioBufferLength;
@@ -298,6 +366,13 @@ function drawFft() {
             low: binsVars.low.value,
             mid: binsVars.mid.value,
             hi: binsVars.hi.value,
+            subbass: binsVars.subbass.value,
+            bass: binsVars.bass.value,
+            lowmidrange: binsVars.lowmidrange.value,
+            midrange: binsVars.midrange.value,
+            uppermidrange: binsVars.uppermidrange.value,
+            presence: binsVars.presence.value,
+            brilliance: binsVars.brilliance.value,
         }
     });
 

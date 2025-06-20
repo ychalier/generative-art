@@ -1,6 +1,6 @@
 var random = Math.random;
 
-const UVARS = ["t", "low", "mid", "hi"];
+const UVARS = ["t", "low", "mid", "hi", "subbass", "bass", "lowmidrange", "midrange", "uppermidrange", "presence", "brilliance"];
 
 var nodeCount = 0;
 var canvas;
@@ -415,6 +415,13 @@ function parseGrammar(grammarText) {
                 case "low":
                 case "mid":
                 case "hi":
+                case "subbass":
+                case "bass":
+                case "lowmidrange":
+                case "midrange":
+                case "uppermidrange":
+                case "presence":
+                case "brilliance":
                     ruleNode = nodeUniform(ruleNodeName);
                     break;
             }
@@ -516,6 +523,13 @@ function parseExpr(exprText) {
             case "low":
             case "mid":
             case "hi":
+            case "subbass":
+            case "bass":
+            case "lowmidrange":
+            case "midrange":
+            case "uppermidrange":
+            case "presence":
+            case "brilliance":
                 return nodeUniform(nodeName)();
             default:
                 return nodeBw(parseFloat(nodeName));
@@ -621,6 +635,13 @@ function setup(grammarText, depth, seed, exprText, audioVars) {
             "uniform float low;",
             "uniform float mid;",
             "uniform float hi;",
+            "uniform float subbass;",
+            "uniform float bass;",
+            "uniform float lowmidrange;",
+            "uniform float midrange;",
+            "uniform float uppermidrange;",
+            "uniform float presence;",
+            "uniform float brilliance;",
             "void main() {",
             expr.toGlsl(),
             `gl_FragColor.xyz = (node${expr.id} + 1.0) / 2.0;`,

@@ -22,6 +22,8 @@ button:active,
 button:focus,
 input:active,
 input:focus,
+select:active,
+select:focus,
 textarea:active,
 textarea:focus {
     outline: 2px solid var(--accent);
@@ -87,6 +89,7 @@ label {
 }
 
 input,
+select,
 textarea {
     display: block;
     background: var(--background-secondary);
@@ -153,6 +156,8 @@ button:hover,
     margin: .4rem 0;
     font-size: small;
     line-height: 1.25;
+    max-height: 33vh;
+    overflow: auto;
 }
 
 #instructions * {
@@ -225,5 +230,15 @@ ul {
 }
 
 #fftCanvas {
+    height: 32px;
     image-rendering: crisp-edges;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#audioInstructionsTable td:nth-child(2),
+#audioInstructionsTable td:nth-child(4) {
+    text-align: right;
 }
