@@ -1,5 +1,7 @@
 var random = Math.random;
 
+const UVARS = ["t", "low", "mid", "hi", "subbass", "bass", "lowmidrange", "midrange", "uppermidrange", "presence", "brilliance"];
+
 var nodeCount = 0;
 var canvas;
 var context;
@@ -17,7 +19,7 @@ var shaderText;
 var vertexShader;
 var fragmentShader;
 var program;
-var tLocation;
+var uLocations = {};
 var hasTimeDependency = false;
 
 function xoshiro128ss(a, b, c, d) {
@@ -133,21 +135,25 @@ function nodeY() {
     }
 }
 
-function nodeT() {
-    const nodeId = nodeCount;
-    nodeCount++;
-    hasTimeDependency = true;
-    return {
-        id: nodeId,
-        arity: 0,
-        toString() {
-            return `t`;
-        },
-        toGlsl() {
-            return `vec3 node${nodeId} = vec3(t, t, t);`;
-        },
-        eval(x, y, t) {
-            return [t, t, t];
+function nodeUniform(varname) {
+    const isT = varname === "t";
+    return () => {
+        const nodeId = nodeCount;
+        nodeCount++;
+        hasTimeDependency = true;
+        return {
+            id: nodeId,
+            arity: 0,
+            toString() {
+                return `t`;
+            },
+            toGlsl() {
+                return `vec3 node${nodeId} = vec3(${varname}, ${varname}, ${varname});`;
+            },
+            eval(x, y, t) {
+                if (isT) return [t, t, t];
+                throw new Error("CPU Implementation Not Implemented!");
+            }
         }
     }
 }
@@ -355,7 +361,8 @@ function parseGrammar(grammarText) {
                 throw new Error(`Invalid rule ${ruleIndex+1} at line ${lineIndex+1}`);
             }
             let ruleNode = tertiarySplit[1].trim();
-            switch(tertiarySplit[1].trim()) {
+            const ruleNodeName = tertiarySplit[1].trim();
+            switch(ruleNodeName) {
                 case "triple":
                     ruleNode = nodeTriple;
                     break;
@@ -405,7 +412,17 @@ function parseGrammar(grammarText) {
                     ruleNode = nodeY;
                     break;
                 case "t":
-                    ruleNode = nodeT;
+                case "low":
+                case "mid":
+                case "hi":
+                case "subbass":
+                case "bass":
+                case "lowmidrange":
+                case "midrange":
+                case "uppermidrange":
+                case "presence":
+                case "brilliance":
+                    ruleNode = nodeUniform(ruleNodeName);
                     break;
             }
             let ruleArgs = null;
@@ -503,7 +520,17 @@ function parseExpr(exprText) {
             case "y":
                 return nodeY();
             case "t":
-                return nodeT();
+            case "low":
+            case "mid":
+            case "hi":
+            case "subbass":
+            case "bass":
+            case "lowmidrange":
+            case "midrange":
+            case "uppermidrange":
+            case "presence":
+            case "brilliance":
+                return nodeUniform(nodeName)();
             default:
                 return nodeBw(parseFloat(nodeName));
         }
@@ -571,7 +598,7 @@ function parseExpr(exprText) {
     }
 }
 
-function setup(grammarText, depth, seed, exprText) {
+function setup(grammarText, depth, seed, exprText, audioVars) {
     setRandomSeed(seed);
     if (exprText != undefined) {
         expr = parseExpr(exprText);
@@ -605,21 +632,37 @@ function setup(grammarText, depth, seed, exprText) {
             "precision lowp float;",
             "varying vec2 uv;",
             "uniform float t;",
+            "uniform float low;",
+            "uniform float mid;",
+            "uniform float hi;",
+            "uniform float subbass;",
+            "uniform float bass;",
+            "uniform float lowmidrange;",
+            "uniform float midrange;",
+            "uniform float uppermidrange;",
+            "uniform float presence;",
+            "uniform float brilliance;",
             "void main() {",
             expr.toGlsl(),
             `gl_FragColor.xyz = (node${expr.id} + 1.0) / 2.0;`,
             "gl_FragColor.w = 1.0;",
             "}",
         ].join("\n");
+        // console.log(shaderText);
         gl.shaderSource(fragmentShader, shaderText);
         gl.compileShader(fragmentShader);
         program = gl.createProgram();
         gl.attachShader(program, vertexShader);
         gl.attachShader(program, fragmentShader);
         gl.linkProgram(program);
-        tLocation = gl.getUniformLocation(program, "t");
+        uLocations = {};
+        for (const varname of UVARS) {
+            uLocations[varname] = gl.getUniformLocation(program, varname);
+        }
         gl.useProgram(program);
-        gl.uniform1f(tLocation, 0);
+        for (const varname of UVARS) {
+            gl.uniform1f(uLocations[varname], 0);
+        }
         gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
         gl.bufferData(gl.ARRAY_BUFFER, 
             new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
@@ -649,7 +692,7 @@ function render() {
     if (renderGl) {
         canvas.width = width;
         canvas.height = height;
-        gl.uniform1f(tLocation, t);
+        gl.uniform1f(uLocations.t, t);
         gl.viewport(0, 0, width, height);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
         return [width, height];
@@ -685,12 +728,13 @@ onmessage = (event) => {
         canvas = event.data.canvas; 
         width = event.data.width; 
         height = event.data.height; 
-        renderGl = event.data.renderGl; 
+        renderGl = event.data.renderGl;
         setup(
             event.data.grammarText,
             event.data.depth,
             event.data.seed,
-            event.data.exprText);
+            event.data.exprText,
+            event.data.audioVars);
         // TODO: directly export as blob?
         postMessage({type: "expr", expr: expr.toString(), shader: shaderText});
     }
@@ -707,6 +751,11 @@ onmessage = (event) => {
                 requestAnimationFrame(animateRender);
             }
             requestAnimationFrame(animateRender);
+        }
+    }
+    if (event.data.type == "audio") {
+        for (const varname in event.data.vars) {
+            gl.uniform1f(uLocations[varname], event.data.vars[varname]);
         }
     }
 }
