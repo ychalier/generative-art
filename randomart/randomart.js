@@ -18,11 +18,15 @@ const presets = {
     animated: {
         depth: 12,
         grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | exp(B):1 | sqrt(B):1 | tan(B):1 | sum(B,B):1 | mult(B,B):1| mix(B,B,B):1\nZ :: x:1 | y:1 | rgb:1 | t:1",
+    },
+    audio: {
+        depth: 4,
+        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | mix(B,B,B):2\nZ :: x:1 | y:1 | rgb:1 | low:1 | mid:1 | hi:1"
     }
 };
 
 var defaultSeed = (Math.random()*2**32)>>>0;
-var defaultPreset = "basic";
+var defaultPreset = "audio";
 var defaultDepth = presets[defaultPreset].depth;
 var defaultGrammarText = presets[defaultPreset].grammarText;
 
@@ -208,3 +212,93 @@ document.querySelectorAll("input,textarea").forEach(input => {
         updateDashboardFocus();
     });
 });
+
+const audioFileInput = document.getElementById("audioFileInput");
+const audioElement = document.getElementById("audioElement");
+const fftCanvas = document.getElementById("fftCanvas");
+
+const fftCanvasBounds = fftCanvas.getBoundingClientRect();
+fftCanvas.width = fftCanvasBounds.width;
+fftCanvas.height = fftCanvasBounds.height;
+
+const fftCtx = fftCanvas.getContext("2d");
+
+let audioContext;
+let audioAnalyser;
+let audioSourceNode;
+let audioDataArray;
+let audioBufferLength;
+let audioAnimationId;
+
+audioFileInput.addEventListener("change", async () => {
+    const file = audioFileInput.files[0];
+    if (!file) return;
+    const objectURL = URL.createObjectURL(file);
+    audioElement.src = objectURL;
+    audioElement.load();
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        audioAnalyser = audioContext.createAnalyser();
+        audioAnalyser.fftSize = 2048;
+        audioBufferLength = audioAnalyser.frequencyBinCount;
+        audioDataArray = new Uint8Array(audioBufferLength);
+
+        audioSourceNode = audioContext.createMediaElementSource(audioElement);
+        audioSourceNode.connect(audioAnalyser);
+        audioAnalyser.connect(audioContext.destination);
+    }
+});
+
+audioElement.addEventListener("play", () => {
+    if (audioContext.state === "suspended") {
+        audioContext.resume();
+    }
+    drawFft();
+});
+
+audioElement.addEventListener("pause", () => {
+    cancelAnimationFrame(audioAnimationId);
+});
+
+function drawFft() {
+    const binsVars = {
+        low: {min: 0, max: 400, value: 0},
+        mid: {min: 400, max: 3000, value: 0},
+        hi: {min: 3000, max: 999999, value: 0},
+    }
+
+    audioAnimationId = requestAnimationFrame(drawFft);
+
+    audioAnalyser.getByteFrequencyData(audioDataArray);
+
+    const normalizedData = Array.from(audioDataArray, val => val / 255);
+    const sampleRate = audioContext.sampleRate;
+    for (let i = 0; i < audioBufferLength; i++) {
+        const frequency = i * sampleRate / audioAnalyser.fftSize;
+        for (const varname in binsVars) {
+            if (frequency >= binsVars[varname].min && frequency < binsVars[varname].max) {
+                binsVars[varname].value = Math.max(binsVars[varname].value, normalizedData[i]);
+            }
+        }
+    }
+
+    fftCtx.clearRect(0, 0, fftCanvas.width, fftCanvas.height);
+    const barWidth = 2 * fftCanvas.width / audioBufferLength;
+
+    normalizedData.forEach((value, i) => {
+        const barHeight = value * fftCanvas.height;
+        fftCtx.fillStyle = `hsl(${value * 360}, 100%, 50%)`;
+        fftCtx.fillRect(i * barWidth, fftCanvas.height - barHeight, barWidth, barHeight);
+    });
+
+    worker.postMessage({
+        type: "audio",
+        vars: {
+            low: binsVars.low.value,
+            mid: binsVars.mid.value,
+            hi: binsVars.hi.value,
+        }
+    });
+
+}

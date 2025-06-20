@@ -207,3 +207,23 @@ ul {
         margin-top: .4rem;
     }
 }
+
+#audio {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    margin-top: 1rem;
+}
+
+#audioFileInput,
+#audioElement,
+#fftCanvas {
+    background: var(--background-secondary);
+    border: 1px solid var(--border);
+    width: 100%;
+    margin-bottom: 0;
+}
+
+#fftCanvas {
+    image-rendering: crisp-edges;
+}

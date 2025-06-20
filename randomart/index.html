@@ -32,6 +32,7 @@
                 <span class="preset-link" onclick="loadPreset('waves')">waves</span>
                 <span class="preset-link" onclick="loadPreset('gradients')">gradients</span>
                 <span class="preset-link" onclick="loadPreset('animated')">animated</span>
+                <span class="preset-link" onclick="loadPreset('audio')">audio</span>
             </div>
             <details id="instructions">
                 <summary><u>instructions</u></summary>
@@ -56,6 +57,12 @@
                 <button id="button-download" title="download canvas as png">download</button>
                 <a id="button-share" title="shareable link">share</a>
                 <button id="button-shader" title="download GLSL shader">shader</button>
+            </div>
+            <div id="audio">
+                <span>audio</span>
+                <input type="file" id="audioFileInput" accept="audio/*" />
+                <canvas id="fftCanvas"></canvas>
+                <audio id="audioElement" controls></audio>
             </div>
         </div>
         <div id="vspace"></div>
