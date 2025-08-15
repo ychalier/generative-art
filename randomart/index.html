@@ -34,6 +34,7 @@
                 <span class="preset-link" onclick="loadPreset('animated')">animated</span>
                 <span class="preset-link" onclick="loadPreset('audio')">audio</span>
                 <span class="preset-link" onclick="loadPreset('audioDetailed')">audio+</span>
+                <span class="preset-link" onclick="loadPreset('mosaic')">mosaic</span>
             </div>
             <details id="instructions">
                 <summary><u>instructions</u></summary>
@@ -44,10 +45,11 @@
                     <li>the first rule must be named <code>A</code></li>
                     <li>there must be a rule named <code>Z</code> containing terminal nodes only</li>
                     <li>terminal nodes are <code>x</code>, <code>y</code>, <code>t</code>, <code>rgb</code> (random color), <code>bw</code> (random grey color), or any audio node (see below)</li>
-                    <li>unary nodes are <code>sin(X)</code>, <code>cos(X)</code>, <code>tan(X)</code>, <code>exp(X)</code>, <code>sqrt(X)</code></li>
+                    <li>unary nodes are <code>scale(X)</code>, <code>sin(X)</code>, <code>cos(X)</code>, <code>tan(X)</code>, <code>exp(X)</code>, <code>sqrt(X)</code></li>
                     <li>binary nodes are <code>sum(X,Y)</code>, <code>mult(X,Y)</code>, <code>mod(X,Y)</code> (division remainder)</li>
                     <li>ternary nodes are <code>triple(X,Y,Z)</code> (build color taking red from X, green from Y and blue from Z), <code>mix(X,Y,Z)</code> (blend Y and Z, controlled by X), <code>level(X,Y,Z)</code> (choose Y or Z based on X value)</li>
                     <li>computations are scaled between -1 and 1, which mostly impacts <code>tan</code>, <code>exp</code>, <code>sqrt</code> and <code>sum</code></li>
+                    <li><code>scale</code> can accept a factor argument; if omitted, it is randomly generated</li>
                     <li><code>sin</code> and <code>cos</code> can accept a frequency argument, and even a phase argument; if omitted, they are randomly generated</li>
                     <li><code>level</code> can accept a threshold argument; if omitted, it is randomly generated</li>
                     <li>audio reactive animations can be done by introducing the following audio variables:

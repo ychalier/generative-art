@@ -5,7 +5,7 @@ const presets = {
     },
     all: {
         depth: 12,
-        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | tan(B):1 | exp(B):1 | sqrt(B):1 | sum(B,B):1 | mult(B,B):1 | mod(B,B):1 | mix(B,B,B):1 | level(B,B,B):1\nZ :: x:1 | y:1 | rgb:1 | bw:1",
+        grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | scale(B):1 | sin(B):1 | cos(B):1 | tan(B):1 | exp(B):1 | sqrt(B):1 | sum(B,B):1 | mult(B,B):1 | mod(B,B):1 | mix(B,B,B):1 | level(B,B,B):1\nZ :: x:1 | y:1 | rgb:1 | bw:1",
     },
     waves: {
         depth: 12,
@@ -26,7 +26,11 @@ const presets = {
     audioDetailed: {
         depth: 12,
         grammarText: "A :: triple(B,B,B):1\nB :: Z:1 | sin(B):1 | cos(B):1 | exp(B):1 | sqrt(B):1 | tan(B):1 | sum(B,B):1 | mult(B,B):1| mix(B,B,B):1\nZ :: x:1 | y:1 | rgb:1 | subbass:1 | bass:1 | lowmidrange:1 | midrange:1 | uppermidrange:1 | presence:1 | brilliance:1"
-    }
+    },
+    mosaic: {
+        depth: 12,
+        grammarText: "A :: triple(B,B,B):1\nB :: W:1 | sin(B):1 | cos(B):1 | tan(B):1 | exp(B):1 | sqrt(B):1 | sum(B,B):1 | mult(B,B):1 | mod(B,B):1 | mix(B,B,B):1 | level(B,B,B):1\nW :: scale(X):1 | scale(Y):1\nX :: x:1\nY :: y:1\nZ :: x:1 | y:1 | rgb:1"
+    },
 };
 
 var defaultSeed = (Math.random()*2**32)>>>0;

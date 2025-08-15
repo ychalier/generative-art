@@ -205,6 +205,13 @@ function nodeCos(subexpr, forcedFrequency, forcedPhase) {
     });
 }
 
+function nodeScale(subexpr, forcedFactor) {
+    const factor = forcedFactor == undefined ? Math.ceil(random() * 10) : forcedFactor;
+    return nodeUnary(subexpr, "scale", a => ((.5 * (a + 1) * factor) % 1), 0, 1, [factor], nodeId => {
+        return `mod((0.5 * (node${nodeId} + 1.0)) * ${factor.toFixed(17)}, 1.0)`;
+    });
+}
+
 function nodeExp(subexpr) {
     return nodeUnary(subexpr, "exp", Math.exp, 0, Math.exp(1), [], nodeId => {
         return `2.0 * exp(node${nodeId}) / exp(1.0) - 1.0`;
@@ -380,6 +387,9 @@ function parseGrammar(grammarText) {
                     break;
                 case "cos":
                     ruleNode = nodeCos;
+                    break;
+                case "scale":
+                    ruleNode = nodeScale;
                     break;
                 case "exp":
                     ruleNode = nodeExp;
@@ -573,6 +583,10 @@ function parseExpr(exprText) {
             } else {
                 return nodeCos(...sinArgs);
             }
+        case "scale":
+            const scaleArgs = [args[0]];
+            if (args.length > 1) scaleArgs.push(ravelNode(args[1]));
+            return nodeScale(...scaleArgs);
         case "exp":
             return nodeExp(...args);
         case "sqrt":
