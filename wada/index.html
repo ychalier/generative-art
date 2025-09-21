@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+    <head>
+        <meta charset="utf8">
+        <meta name="viewport" content="width=device-width" />
+        <title>Bassins de Wada</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+
+    <body>
+        <canvas id="canvas"></canvas>
+        <div id="dashboard">
+            <div class="form-input">
+                <label for="input-rounds">Itérations de la méthode de Newton</label>
+                <input id="input-rounds" type="range" min="0" max="100" value="50" step="1" />
+            </div>
+            <div class="form-input">
+                <label for="input-root">Racines n-iemes de 2</label>
+                <input id="input-root" type="range" min="3" max="8" value="3" step="1" />
+            </div>
+            <div class="form-input">
+                <label>Couleurs</label>
+                <div class="color-inputs">
+                    <input id="input-color0" type="color" value="#FE4A49" />
+                    <input id="input-color1" type="color" value="#2AB7CA" />
+                    <input id="input-color2" type="color" value="#FED766" />
+                    <input id="input-color3" type="color" value="#628b48" />
+                    <input id="input-color4" type="color" value="#cfbae1" />
+                    <input id="input-color5" type="color" value="#48639c" />
+                    <input id="input-color6" type="color" value="#7D451B" />
+                    <input id="input-color7" type="color" value="#0a0903" />
+                </div>
+            </div>
+            <button id="button-animate">Animer</button>
+            <button id="button-screen">Télécharger</button>
+        </div>
+        <script src="main.js"></script>
+    </body>
+
+</html>
