@@ -23,10 +23,37 @@ uniform vec2 u_pan;
 uniform float u_zoom;
 uniform float u_rotation;
 
-uniform float R;
-uniform float C;
+uniform int rounds;
+uniform int root;
+uniform vec3 color0;
+uniform vec3 color1;
+uniform vec3 color2;
+uniform vec3 color3;
+uniform vec3 color4;
+uniform vec3 color5;
+uniform vec3 color6;
+uniform vec3 color7;
+uniform vec3 color8;
+uniform vec3 color9;
+const int MAX_ITERS = 1000;
+
+const float PI = 3.141592653589793;
+const float TWOPI = 2.0 * PI;
+
+vec2 c_mul(vec2 a, vec2 b) {
+    return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+}
+
+vec2 c_div(vec2 a, vec2 b) {
+    float denom = b.x * b.x + b.y * b.y;
+    return vec2(
+        (a.x * b.x + a.y * b.y) / denom,
+        (a.y * b.x - a.x * b.y) / denom
+    );
+}
 
 void main() {
+    float rootf = float(root);
     vec2 uv = (gl_FragCoord.xy / u_resolution) * 2.0 - 1.0;
     uv.x *= u_resolution.x / u_resolution.y;
     uv -= u_pan;
@@ -36,10 +63,43 @@ void main() {
     mat2 rot = mat2(c, -s, s, c);
     uv = rot * uv;
     uv -= vec2(0.5, 0.5);
-    float f = pow(R, 2.0) / (pow(uv.x, 2.0) + pow(uv.y, 2.0));
-    uv = floor(f * uv / C);
-    float e = (uv.x + uv.y) / 2.0;
-    gl_FragColor.xyz = vec3(2.0 * (e - floor(e)));
+    vec2 z = vec2(uv.x, uv.y);
+    for (int i = 0; i < MAX_ITERS; i++) {
+        if (i >= rounds) break;
+        vec2 zpow = z;
+        for (int i = 2; i < MAX_ITERS; i++) {
+            if (i >= root) break;
+            zpow = c_mul(zpow, z);
+        }
+        z = z - c_div(c_mul(zpow, z) - vec2(2.0, 0.0), rootf * zpow);
+    }
+    float theta = atan(z.y, z.x);
+    if (theta < 0.0) theta += TWOPI;
+    theta = theta + PI / rootf;
+    if (theta > TWOPI) theta -= TWOPI;
+    theta = theta * rootf / TWOPI;
+    int color = int(floor(theta));
+    if (color == 0) {
+        gl_FragColor.xyz = color0;
+    } else if (color == 1) {
+        gl_FragColor.xyz = color1;
+    } else if (color == 2) {
+        gl_FragColor.xyz = color2;
+    } else if (color == 3) {
+        gl_FragColor.xyz = color3;
+    } else if (color == 4) {
+        gl_FragColor.xyz = color4;
+    } else if (color == 5) {
+        gl_FragColor.xyz = color5;
+    } else if (color == 6) {
+        gl_FragColor.xyz = color6;
+    } else if (color == 7) {
+        gl_FragColor.xyz = color7;
+    } else if (color == 8) {
+        gl_FragColor.xyz = color8;
+    } else {
+        gl_FragColor.xyz = color9;
+    }
     gl_FragColor.w = 1.0;
 }`;
 
@@ -51,9 +111,15 @@ gl.attachShader(program, vertexShader);
 gl.attachShader(program, fragmentShader);
 gl.linkProgram(program);
 
-const rLocation = gl.getUniformLocation(program, "R");
-const cLocation = gl.getUniformLocation(program, "C");
+const NUM_COLORS = 8;
+
 const scaleLocation = gl.getUniformLocation(program, "scale");
+const roundsLocation = gl.getUniformLocation(program, "rounds");
+const rootLocation = gl.getUniformLocation(program, "root");
+const colorLocations = [];
+for (let i = 0; i < NUM_COLORS; i++) {
+    colorLocations.push(gl.getUniformLocation(program, `color${i}`));
+}
 
 gl.useProgram(program);
 
@@ -218,23 +284,37 @@ window.addEventListener("resize", () => {
     render();
 });
 
-const parseEase = y => x => Math.pow(parseFloat(x), Math.log10(y) / Math.log10(0.5));
-const formatEase = y => x => Math.pow(x, Math.log10(0.5) / Math.log10(y));
-
-const p1 = parseEase(0.3);
-document.getElementById("input-r").addEventListener("input", (event) => {
-    gl.uniform1f(rLocation, p1(parseFloat(event.target.value)));
+document.getElementById("input-rounds").addEventListener("input", (event) => {
+    gl.uniform1i(roundsLocation, parseInt(event.target.value));
     render();
 });
 
-const p2 = parseEase(0.1);
-document.getElementById("input-c").addEventListener("input", (event) => {
-    gl.uniform1f(cLocation, p2(parseFloat(event.target.value)));
+document.getElementById("input-root").addEventListener("input", (event) => {
+    gl.uniform1i(rootLocation, parseInt(event.target.value));
     render();
 });
 
-gl.uniform1f(rLocation, 0.3);
-gl.uniform1f(cLocation, 0.1);
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return [
+        parseInt(result[1], 16) / 255,
+        parseInt(result[2], 16) / 255,
+        parseInt(result[3], 16) / 255,
+    ];
+}
+
+
+for (let i = 0; i < NUM_COLORS; i++) {
+    const input = document.getElementById(`input-color${i}`);
+    gl.uniform3f(colorLocations[i], ...hexToRgb(input.value));
+    input.addEventListener("input", (event) => {
+        gl.uniform3f(colorLocations[i], ...hexToRgb(event.target.value));
+        render();
+    });
+}
+
+gl.uniform1i(roundsLocation, 50);
+gl.uniform1i(rootLocation, 3);
 
 render();
 
@@ -279,7 +359,7 @@ animateButton.addEventListener("click", () => {
 
 document.getElementById("button-screen").addEventListener("click", (event) => {
     const link = document.createElement("a");
-    const fileName = `space-inversion-${parseInt((new Date()) * 1)}.png`;
+    const fileName = `wada-${parseInt((new Date()) * 1)}.png`;
     link.setAttribute("download", fileName);
     link.href = canvas.toDataURL("image/png");
     link.click();
