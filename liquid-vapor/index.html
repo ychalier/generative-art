@@ -4,7 +4,6 @@
 
 <head>
     <meta charset="utf8">
-    <meta name="viewport" content="width=device-width">
     <title>Liquid-Vapor Model</title>
     <style>
 * {
@@ -24,11 +23,21 @@ canvas {
     image-rendering: crisp-edges;
     cursor: crosshair;
 }
+#recordIcon {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    font-size: larger;
+}
+.hidden {
+    display: none;
+}
     </style>
 </head>
 
 <body>
     <canvas id="canvas"></canvas>
+    <span id="recordIcon" class="hidden">🔴</span>
     <script src="master.js"></script>
 </body>
 
