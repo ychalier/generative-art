@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf8">
+    <title>Flatland</title>
+    <style>
+* {
+    box-sizing: border-box;
+}
+html,
+body {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+}
+canvas {
+    width: 100%;
+    cursor: crosshair;
+}
+#flatCanvas {
+    height: 10%;
+}
+#birdCanvas {
+    height: 90%;
+}
+    </style>
+</head>
+
+<body>
+    <canvas id="birdCanvas"></canvas>
+    <canvas id="flatCanvas"></canvas>
+    <script src="master.js"></script>
+</body>
+
+</html>
