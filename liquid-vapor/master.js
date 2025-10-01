@@ -59,7 +59,7 @@ void main() {
 `);
 
 const simulationShader = createShader(gl.FRAGMENT_SHADER, `
-precision highp float;
+precision lowp float;
 
 uniform sampler2D sampler;
 varying vec2 uv;
@@ -71,6 +71,7 @@ uniform float u_width;
 uniform float u_height;
 uniform float u_temp;
 uniform float u_pot;
+uniform int u_octogon;
 
 const float lifeSpan = 3.0; // seconds
 
@@ -86,6 +87,9 @@ float spinat(float dx, float dy) {
 
 void main() {
     float spin_neighbors = spinat(1.0, 0.0) + spinat(-1.0, 0.0) + spinat(0.0, 1.0) + spinat(0.0, -1.0);
+    if (u_octogon == 1) {
+        spin_neighbors += spinat(1.0, 1.0) + spinat(-1.0, 1.0) + spinat(1.0, -1.0) + spinat(-1.0, -1.0);
+    }
     float spin_center = spinat(0.0, 0.0);
     float energy = 2.0 * spin_center * (spin_neighbors + u_pot);
     float p = exp(-energy / u_temp);
@@ -100,7 +104,7 @@ void main() {
 );
 
 const copyShader = createShader(gl.FRAGMENT_SHADER, `
-precision highp float;
+precision lowp float;
 
 uniform sampler2D sampler;
 varying vec2 uv;
@@ -111,7 +115,7 @@ void main() {
 `);
 
 const colorShader = createShader(gl.FRAGMENT_SHADER, `
-precision highp float;
+precision lowp float;
 
 uniform sampler2D sampler;
 varying vec2 uv;
@@ -128,7 +132,7 @@ void main() {
 `);
 
 const invertShader = createShader(gl.FRAGMENT_SHADER, `
-precision highp float;
+precision lowp float;
 
 uniform sampler2D sampler;
 varying vec2 uv;
@@ -165,6 +169,7 @@ const uHeight = gl.getUniformLocation(simulationProgram, "u_height");
 const uSeed = gl.getUniformLocation(simulationProgram, "u_seed");
 const uDt = gl.getUniformLocation(simulationProgram, "u_dt");
 const uSpeed = gl.getUniformLocation(simulationProgram, "u_speed");
+const uOctogon = gl.getUniformLocation(simulationProgram, "u_octogon");
 const uCenter = gl.getUniformLocation(manualProgram, "u_center");
 const uAspect = gl.getUniformLocation(manualProgram, "u_aspect");
 const uAction = gl.getUniformLocation(manualProgram, "u_action");
@@ -358,6 +363,7 @@ function stopRecording() {
     mediaRecorder.stop();
 }
 
+var enableOctogons = 0;
 window.addEventListener("keydown", (event) => {
     if (event.key == "s") {
         screenshot();
@@ -367,6 +373,10 @@ window.addEventListener("keydown", (event) => {
         } else {
             stopRecording();
         }
+    } else if (event.key == "o") {
+        gl.useProgram(simulationProgram);
+        enableOctogons = 1 - enableOctogons;
+        gl.uniform1i(uOctogon, enableOctogons);
     }
 });
 
