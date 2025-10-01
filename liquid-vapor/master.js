@@ -64,7 +64,7 @@ precision highp float;
 uniform sampler2D sampler;
 varying vec2 uv;
 
-uniform float u_time;
+uniform float u_seed;
 uniform float u_dt;
 uniform float u_speed;
 uniform float u_width;
@@ -89,8 +89,8 @@ void main() {
     float spin_center = spinat(0.0, 0.0);
     float energy = 2.0 * spin_center * (spin_neighbors + u_pot);
     float p = exp(-energy / u_temp);
-    float r1 = rand(uv + u_time + 0.0);
-    float r2 = rand(uv + u_time + 1.0);
+    float r1 = rand(uv + u_seed + 0.0);
+    float r2 = rand(uv + u_seed + 1.0);
     if (r1 > u_speed && (energy < 0.0 || r2 < p)) {
         spin_center *= -1.0;
     }
@@ -127,17 +127,48 @@ void main() {
 }
 `);
 
+const invertShader = createShader(gl.FRAGMENT_SHADER, `
+precision highp float;
+
+uniform sampler2D sampler;
+varying vec2 uv;
+
+uniform vec2 u_center;
+uniform float u_aspect;
+uniform float u_action;
+uniform float u_radius;
+
+void main() {
+    vec4 color = texture2D(sampler, uv);
+    vec2 a = uv - u_center;
+    a.x *= u_aspect;
+    float distance = sqrt(dot(a, a));
+    if (distance < u_radius) {
+        gl_FragColor.x = 0.0;
+        gl_FragColor.w = u_action;
+    } else {
+        gl_FragColor.x = color.x;
+        gl_FragColor.w = color.w;
+    }
+}
+`);
+
 const simulationProgram = createProgram(vertexShader, simulationShader);
 const copyProgram = createProgram(vertexShader, copyShader);
 const colorProgram = createProgram(vertexShader, colorShader);
+const manualProgram = createProgram(vertexShader, invertShader);
 
 const uTemperature = gl.getUniformLocation(simulationProgram, "u_temp");
 const uChemicalPotential = gl.getUniformLocation(simulationProgram, "u_pot");
 const uWidth = gl.getUniformLocation(simulationProgram, "u_width");
 const uHeight = gl.getUniformLocation(simulationProgram, "u_height");
-const uTime = gl.getUniformLocation(simulationProgram, "u_time");
+const uSeed = gl.getUniformLocation(simulationProgram, "u_seed");
 const uDt = gl.getUniformLocation(simulationProgram, "u_dt");
 const uSpeed = gl.getUniformLocation(simulationProgram, "u_speed");
+const uCenter = gl.getUniformLocation(manualProgram, "u_center");
+const uAspect = gl.getUniformLocation(manualProgram, "u_aspect");
+const uAction = gl.getUniformLocation(manualProgram, "u_action");
+const uRadius = gl.getUniformLocation(manualProgram, "u_radius");
 
 function updateParameters(x, y) {
     let T = Math.pow(10, x * 2 - 1);
@@ -154,8 +185,29 @@ function updateParameters(x, y) {
     gl.uniform1f(uChemicalPotential, C);
 }
 
+canvas.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+});
+
+var mouseDown = false;
+var mouseDownButton = null;
+
 window.addEventListener("mousemove", (event) => {
-    updateParameters(event.clientX / window.innerWidth, event.clientY / window.innerHeight);
+    if (mouseDown) {
+        applyManualEffect(event.clientX / window.innerWidth, event.clientY / window.innerHeight, mouseDownButton);
+    } else {
+        updateParameters(event.clientX / window.innerWidth, event.clientY / window.innerHeight);
+    }
+});
+
+window.addEventListener("mousedown", (event) => {
+    mouseDown = true;
+    mouseDownButton = event.button == 0;
+    applyManualEffect(event.clientX / window.innerWidth, event.clientY / window.innerHeight, mouseDownButton);
+});
+
+window.addEventListener("mouseup", (event) => {
+    mouseDown = false;
 });
 
 window.addEventListener("touchstart", (event) => {
@@ -220,12 +272,30 @@ function setup() {
     initializeBuffer();
     bindTexture(colorProgram, "sampler", 1, nextTexture);
 
+    gl.useProgram(manualProgram);
+    initializeBuffer();
+    bindTexture(manualProgram, "sampler", 0, pastTexture);
+    gl.uniform1f(uAspect, width / height);
+    gl.uniform1f(uRadius, 0.05);
+
     gl.viewport(0, 0, width, height);
+}
+
+function applyManualEffect(x, y, action) {
+    gl.useProgram(manualProgram);
+    gl.uniform2f(uCenter, x, 1 - y, );
+    gl.uniform1f(uAction, action ? 1 : 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, nextBuffer);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    gl.useProgram(copyProgram);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, pastBuffer);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
 function render(time) {
     gl.useProgram(simulationProgram);
-    gl.uniform1f(uTime, time * 0.001);
+    gl.uniform1f(uSeed, Math.random());
     gl.uniform1f(uDt, (time - previousTime) * 0.001);
     gl.bindFramebuffer(gl.FRAMEBUFFER, nextBuffer);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
