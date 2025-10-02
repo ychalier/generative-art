@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="1920"
+   height="1080"
+   viewBox="0 0 508 285.74999"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   sodipodi:docname="world.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="1.4770342"
+     inkscape:cx="939.38243"
+     inkscape:cy="512.85203"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Calque 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       id="rect1"
+       style="fill:#fe2a04;stroke-width:2.16501;stroke-linecap:round;paint-order:markers fill stroke;fill-opacity:1"
+       d="M 254 53.935726 L 246.8547 63.170304 L 246.8547 131.72529 L 254 133.81819 L 261.1453 131.72529 L 261.1453 63.170304 L 254 53.935726 z " />
+    <path
+       id="rect1-8"
+       style="fill:#e8a1b1;stroke-width:2.16501;stroke-linecap:round;paint-order:markers fill stroke;fill-opacity:1"
+       d="M 265.14971 135.7297 L 263.05681 142.875 L 265.14971 150.0203 L 333.7047 150.0203 L 342.93927 142.875 L 333.7047 135.7297 L 265.14971 135.7297 z " />
+    <path
+       id="path1"
+       style="fill:#59c9ef;fill-opacity:1;stroke-width:2.16501;stroke-linecap:round;paint-order:markers fill stroke"
+       d="M 174.2953 135.7297 L 165.06073 142.875 L 174.2953 150.0203 L 242.85029 150.0203 L 244.94319 142.875 L 242.85029 135.7297 L 174.2953 135.7297 z " />
+    <path
+       id="path2"
+       style="fill:#de0266;fill-opacity:1;stroke-width:2.16501;stroke-linecap:round;paint-order:markers fill stroke"
+       d="M 254 151.93181 L 246.8547 154.02471 L 246.8547 222.5797 L 254 231.81427 L 261.1453 222.5797 L 261.1453 154.02471 L 254 151.93181 z " />
+    <path
+       id="path3"
+       style="fill:#00a844;fill-opacity:1;stroke-width:2.165;stroke-linecap:round;paint-order:markers fill stroke"
+       inkscape:transform-center-x="-1.172033"
+       inkscape:transform-center-y="-4.374087"
+       d="M 266.80821,155.68322 254,151.93178 l -12.80822,3.75144 3.75145,-12.80822 -3.75145,-12.80821 12.80822,3.75144 12.80821,-3.75144 -3.75144,12.80821 z" />
+  </g>
+</svg>

@@ -13,7 +13,7 @@ const SPEED_WALK   = 300;          // pixels per second
 const SPEED_SPRINT = 800;          // pixels per second
 var playerPosition = {x: 0, y: 0};
 var playerSpeed    = {x: 0, y: 0};
-var lightDirection = normalize({x: 1, y: 1});
+var lightDirection = normalize({x: -1, y: 1});
 var fov = Math.PI / 3;
 var cameraDirection = Math.PI / 4;
 var sprintOn = false;
@@ -72,31 +72,25 @@ function hexToRgb(hex) {
     ];
 }
 
+function extractFillColor(path) {
+    const style = path.getAttribute("style");
+    for (const part of style.split(";")) {
+        const [key, value] = style.split(":");
+        if (key == "fill") return value;
+    }
+}
+
 async function loadSvgWorldModel(url) {
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Failed to load SVG: ${response.status}`);
     }
-
     const text = await response.text();
-
-    // Parse SVG text into a DOM
     const parser = new DOMParser();
     const svgDoc = parser.parseFromString(text, "image/svg+xml");
-
-    // Collect all <path> elements
+    const scale = width / parseFloat(svgDoc.querySelector("svg").getAttribute("viewBox").split(" ")[2]);
     const paths = svgDoc.querySelectorAll("path");
-
     const shapes = [];
-
-    function extractFillColor(path) {
-        const style = path.getAttribute("style");
-        for (const part of style.split(";")) {
-            const [key, value] = style.split(":");
-            if (key == "fill") return value;
-        }
-    }
-
     paths.forEach(path => {
         const d = path.getAttribute("d");
         const fill = extractFillColor(path);
@@ -120,20 +114,14 @@ async function loadSvgWorldModel(url) {
                 } else {
                     continue;
                 }
-                points.push([curPoint.x, curPoint.y]);
+                points.push([scale * curPoint.x, scale * curPoint.y]);
                 lastPoint = curPoint;
             }
         } catch (e) {
             console.warn("Could not parse path", d, e);
         }
-
-        shapes.push({
-            color: rgb,
-            points: points
-        });
+        addSegments({color: rgb, points: points});
     });
-
-    return shapes;
 }
 
 
@@ -174,7 +162,17 @@ function drawFlat() {
 
 function drawBird() {
 
-    birdContext.fillStyle = "white";
+    const size = Math.min(width, height) / 2;
+    const lightGradient = birdContext.createLinearGradient(
+        BIRD_SCALE * .5 * width,
+        BIRD_SCALE * .5 * height,
+        BIRD_SCALE * .5 * width + lightDirection.x * size,
+        BIRD_SCALE * .5 * height + lightDirection.y * size,
+    );
+    lightGradient.addColorStop(0, "#FFFFFF");
+    lightGradient.addColorStop(.25, "#E3D03D");
+    lightGradient.addColorStop(.5, "#9B772A");
+    birdContext.fillStyle = lightGradient;
     birdContext.fillRect(0, 0, BIRD_SCALE * width, BIRD_SCALE * height);
 
     for (const polygon of polygons) {
@@ -259,6 +257,14 @@ window.addEventListener("keydown", (event) => {
     if (event.key == "b") {
         birdCanvas.classList.toggle("hidden");
     }
+    if (event.key == "h") {
+        playerPosition = {x: 0, y: 0};
+        playerSpeed    = {x: 0, y: 0};
+        lightDirection = normalize({x: -1, y: 1});
+        fov = Math.PI / 3;
+        cameraDirection = Math.PI / 4;
+        sprintOn = false;
+    }
 });
 
 window.addEventListener("keyup", (event) => {
@@ -277,13 +283,7 @@ window.addEventListener("resize", setSize);
 
 flatCanvas.addEventListener("click", () => {flatCanvas.requestPointerLock();});
 
-addSegments({points: [[270, 200], [400, 120], [350, 300]], color: [255, 0, 0]});
-addSegments({points: [[640, 300], [690, 310], [700, 450], [600, 440]], color: [0, 255, 0]});
-addSegments({points: [[1000, 600], [1010, 620], [1030, 600], [1040, 650], [1020, 700]], color: [0, 0, 255]});
-
-loadSvgWorldModel("stars.svg").then((shapes) => {
-    shapes.forEach(addSegments);
-});
+loadSvgWorldModel("world.svg");
 
 setSize();
 draw(0);
