@@ -59,7 +59,7 @@ void main() {
 `);
 
 const simulationShader = createShader(gl.FRAGMENT_SHADER, `
-precision lowp float;
+precision highp float;
 
 uniform sampler2D sampler;
 varying vec2 uv;
@@ -104,7 +104,7 @@ void main() {
 );
 
 const copyShader = createShader(gl.FRAGMENT_SHADER, `
-precision lowp float;
+precision highp float;
 
 uniform sampler2D sampler;
 varying vec2 uv;
@@ -115,7 +115,7 @@ void main() {
 `);
 
 const colorShader = createShader(gl.FRAGMENT_SHADER, `
-precision lowp float;
+precision highp float;
 
 uniform sampler2D sampler;
 varying vec2 uv;
@@ -132,7 +132,7 @@ void main() {
 `);
 
 const invertShader = createShader(gl.FRAGMENT_SHADER, `
-precision lowp float;
+precision highp float;
 
 uniform sampler2D sampler;
 varying vec2 uv;
