@@ -7,10 +7,16 @@ const project = (x, fromMin, fromMax, toMin, toMax) => (x - fromMin) / (fromMax 
 const flatContext = flatCanvas.getContext("2d");
 const birdContext = birdCanvas.getContext("2d");
 
+const BACKGROUND_COLOR = [255, 255, 255];
 const BIRD_SCALE = .15;
 const CAMERA_SENSITIVITY = 0.004;  // radian per pixel
 const SPEED_WALK   = 300;          // pixels per second
 const SPEED_SPRINT = 800;          // pixels per second
+const CHUNK_SIZE   = 800;          // pixels
+const CHUNK_RADIUS = 1;
+const CHUNK_DENSITY = 5;
+const RENDER_DISTANCE = 1000;       // pixels
+const FOG_START_RATIO = 0.6;
 var playerPosition = {x: 0, y: 0};
 var playerSpeed    = {x: 0, y: 0};
 var lightDirection = normalize({x: -1, y: 1});
@@ -21,20 +27,101 @@ var previousRenderTime = 0;
 var width = window.innerWidth;
 var height = window.innerHeight;
 var toastTimeout = null;
-var polygons = [];
-var segments = [];
+var loadedChunks = new Map();
 
-function addSegments(polygon) {
-    polygons.push(polygon);
+function getChunkCoords(x, y) {
+    return [
+        Math.floor(x / CHUNK_SIZE),
+        Math.floor(y / CHUNK_SIZE)
+    ];
+}
+
+/**
+ * @see https://github.com/cprosche/mulberry32
+ */
+function mulberry32(a) {
+    return function() {
+      var t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
+
+const POLYGON_TYPE_TRIANGLE = 0;
+const POLYGON_TYPE_SQUARE = 1;
+
+function generatePolygon(rng, px, py) {
+    const polygonType = Math.floor(rng() * 2);
+    const size = 50 + rng() * 100;
+    let points;
+    //TODO: add more shapes (random/isosceles/equilateral triangle, rectangles, thin rectangles)
+    //TODO: add rotations
+    if (polygonType == POLYGON_TYPE_TRIANGLE) {
+        points = [
+            [px, py],
+            [px + size / 2, py + size],
+            [px - size / 2, py + size],
+        ];
+    } else if (polygonType == POLYGON_TYPE_SQUARE) {
+        points = [
+            [px, py],
+            [px + size, py],
+            [px + size, py + size],
+            [px, py + size]
+        ];
+    }
+    const color = randomVibrantColor(rng);
+    return { points: points, color };
+}
+
+function generateChunk(cx, cy) {
+    const rng = mulberry32(cx * 12345 + cy * 67890);
+    const chunkPolygons = [];
+    var chunkSegments = [];
+    for (let i = 0; i < rng() * CHUNK_DENSITY; i++) {
+        const px = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
+        const py = cy * CHUNK_SIZE + rng() * CHUNK_SIZE;
+        const polygon = generatePolygon(rng, px, py);
+        chunkPolygons.push(polygon);
+        chunkSegments = chunkSegments.concat(extractSegments(polygon));
+    }
+    return [chunkPolygons, chunkSegments];
+}
+
+function updateWorld() {
+    const [pcx, pcy] = getChunkCoords(playerPosition.x, playerPosition.y);
+    const needed = new Set();
+    for (let dx = -CHUNK_RADIUS; dx <= CHUNK_RADIUS; dx++) {
+        for (let dy = -CHUNK_RADIUS; dy <= CHUNK_RADIUS; dy++) {
+            const cx = pcx + dx, cy = pcy + dy;
+            const key = `${cx},${cy}`;
+            needed.add(key);
+            if (!loadedChunks.has(key)) {
+                loadedChunks.set(key, generateChunk(cx, cy));
+            }
+        }
+    }
+    for (const key of loadedChunks.keys()) {
+        if (!needed.has(key)) {
+            loadedChunks.delete(key);
+        }
+    }
+}
+
+function extractSegments(polygon) {
+    const polygonSegments = [];
     for (let i = 0; i < polygon.points.length; i++) {
         const [x0, y0] = polygon.points[i];
         const [x1, y1] = polygon.points[(i + 1) % polygon.points.length];
-        segments.push({
+        polygonSegments.push({
             x0: x0, y0: y0, x1: x1, y1: y1,
             color: polygon.color,
-            normal: normalize(rot({x: x1 - x0, y: y1 - y0}, Math.PI / 2))
+            normal: normalize(rot({x: x1 - x0, y: y1 - y0}, Math.PI / 2)),
+            barycenter: {x: (x0 + x1)/2, y: (y0 + y1)/2},
         });
     }
+    return polygonSegments;
 }
 
 function setSize() {
@@ -70,6 +157,23 @@ function hexToRgb(hex) {
         (intVal >> 8) & 255,
         intVal & 255
     ];
+}
+
+function hslToRgb(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n =>
+        l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+}
+
+function randomVibrantColor(rng) {
+    const hue = Math.floor(rng() * 360);
+    const sat = 70 + rng() * 30;
+    const light = 40 + rng() * 20;
+    return hslToRgb(hue, sat, light);
 }
 
 function extractFillColor(path) {
@@ -120,21 +224,24 @@ async function loadSvgWorldModel(url) {
         } catch (e) {
             console.warn("Could not parse path", d, e);
         }
-        addSegments({color: rgb, points: points});
+        //addSegments({color: rgb, points: points}); TODO: update this with new world model
     });
 }
 
 
-function drawFlat() {
+function drawFlat(segments) {
     const imageData = new ImageData(width, 1);
     for (let j = 0; j < width; j++) {
         const theta = cameraDirection - fov + j / width * 2 * fov;
         const a = Math.tan(theta);
         const b = playerPosition.y - a * playerPosition.x;
         let minDistance;
-        let color = [255, 255, 255];
+        let color = [BACKGROUND_COLOR[0], BACKGROUND_COLOR[1], BACKGROUND_COLOR[2]];
         let light = 1;
+        let opacity = 0;
         for (const seg of segments) {
+            let distance = norm({x: seg.barycenter.x - playerPosition.x, y: seg.barycenter.y - playerPosition.y});
+            if (distance >= RENDER_DISTANCE) continue;
             let t = (a * seg.x0 + b - seg.y0) / (seg.y1 - seg.y0 - a * seg.x1 + a * seg.x0);
             if (t >= 0 && t <= 1) {
                 const x2 = (1 - t) * seg.x0 + t * seg.x1;
@@ -144,23 +251,27 @@ function drawFlat() {
                 if (dot(u, v) < 0) {
                     continue;
                 }
-                const distance = norm({x: x2 - playerPosition.x, y: y2 - playerPosition.y});
+                distance = norm({x: x2 - playerPosition.x, y: y2 - playerPosition.y});
                 if (minDistance == undefined || distance < minDistance) {
                     minDistance = distance;
                     color = seg.color;
                     light = project(dot(seg.normal, lightDirection), -1, 1, .4, 1);
+                    opacity = distance < FOG_START_RATIO * RENDER_DISTANCE ? 1 : 1 - (distance - FOG_START_RATIO * RENDER_DISTANCE) / ((1 - FOG_START_RATIO) * RENDER_DISTANCE);
                 }
             }
         }
-        imageData.data[4*j + 0] = light * color[0];
-        imageData.data[4*j + 1] = light * color[1];
-        imageData.data[4*j + 2] = light * color[2];
+        imageData.data[4*j + 0] = (1 - opacity) * BACKGROUND_COLOR[0] + opacity * light * color[0];
+        imageData.data[4*j + 1] = (1 - opacity) * BACKGROUND_COLOR[1] + opacity * light * color[1];
+        imageData.data[4*j + 2] = (1 - opacity) * BACKGROUND_COLOR[2] + opacity * light * color[2];
         imageData.data[4*j + 3] = 255;
     }
     flatContext.putImageData(imageData, 0, 0);
 }
 
-function drawBird() {
+function drawBird(polygons) {
+
+    const bX = BIRD_SCALE * (playerPosition.x - width / 2);
+    const bY = BIRD_SCALE * (playerPosition.y - height / 2);
 
     const size = Math.min(width, height) / 2;
     const lightGradient = birdContext.createLinearGradient(
@@ -180,33 +291,33 @@ function drawBird() {
         birdContext.fillStyle = `rgb(${r}, ${g}, ${b})`;
         birdContext.beginPath();
         [x0, y0] = polygon.points[polygon.points.length - 1];
-        birdContext.moveTo(BIRD_SCALE * x0, BIRD_SCALE * y0)
+        birdContext.moveTo(BIRD_SCALE * x0 - bX, BIRD_SCALE * y0 - bY)
         for (const [x, y] of polygon.points) {
-            birdContext.lineTo(BIRD_SCALE * x, BIRD_SCALE * y);
+            birdContext.lineTo(BIRD_SCALE * x - bX, BIRD_SCALE * y - bY);
         }
         birdContext.fill();
     }
     birdContext.fillStyle = "#ff000080";
     birdContext.beginPath();
-    birdContext.moveTo(BIRD_SCALE * playerPosition.x, BIRD_SCALE * playerPosition.y);
-    birdContext.lineTo(BIRD_SCALE * (playerPosition.x + 50 * Math.cos(cameraDirection - fov)), BIRD_SCALE * (playerPosition.y + 50 * Math.sin(cameraDirection - fov)));
-    birdContext.arc(BIRD_SCALE * playerPosition.x, BIRD_SCALE * playerPosition.y, BIRD_SCALE * 50, cameraDirection - fov, cameraDirection + fov);
+    birdContext.moveTo(BIRD_SCALE * playerPosition.x - bX, BIRD_SCALE * playerPosition.y - bY);
+    birdContext.lineTo(BIRD_SCALE * (playerPosition.x + 50 * Math.cos(cameraDirection - fov)) -bX, BIRD_SCALE * (playerPosition.y + 50 * Math.sin(cameraDirection - fov)) - bY);
+    birdContext.arc(BIRD_SCALE * playerPosition.x - bX, BIRD_SCALE * playerPosition.y - bY, BIRD_SCALE * 50, cameraDirection - fov, cameraDirection + fov);
     birdContext.fill();
 
     birdContext.strokeStyle = "red";
     birdContext.beginPath();
-    birdContext.moveTo(BIRD_SCALE * playerPosition.x, BIRD_SCALE * playerPosition.y);
-    birdContext.lineTo(BIRD_SCALE * (playerPosition.x + 50 * Math.cos(cameraDirection - fov)), BIRD_SCALE * (playerPosition.y + 50 * Math.sin(cameraDirection - fov)));
+    birdContext.moveTo(BIRD_SCALE * playerPosition.x - bX, BIRD_SCALE * playerPosition.y - bY);
+    birdContext.lineTo(BIRD_SCALE * (playerPosition.x + 50 * Math.cos(cameraDirection - fov)) - bX, BIRD_SCALE * (playerPosition.y + 50 * Math.sin(cameraDirection - fov)) - bY);
     birdContext.stroke();
 
     birdContext.beginPath();
-    birdContext.moveTo(BIRD_SCALE * playerPosition.x, BIRD_SCALE * playerPosition.y);
-    birdContext.lineTo(BIRD_SCALE * (playerPosition.x + 50 * Math.cos(cameraDirection + fov)), BIRD_SCALE * (playerPosition.y + 50 * Math.sin(cameraDirection + fov)));
+    birdContext.moveTo(BIRD_SCALE * playerPosition.x - bX, BIRD_SCALE * playerPosition.y - bY);
+    birdContext.lineTo(BIRD_SCALE * (playerPosition.x + 50 * Math.cos(cameraDirection + fov)) - bX, BIRD_SCALE * (playerPosition.y + 50 * Math.sin(cameraDirection + fov)) - bY);
     birdContext.stroke();
 
     birdContext.fillStyle = "black";
     birdContext.beginPath();
-    birdContext.arc(BIRD_SCALE * playerPosition.x, BIRD_SCALE * playerPosition.y, 2, 0, 2 * Math.PI);
+    birdContext.arc(BIRD_SCALE * playerPosition.x - bX, BIRD_SCALE * playerPosition.y - bY, 2, 0, 2 * Math.PI);
     birdContext.fill();
 
 }
@@ -217,8 +328,15 @@ function draw(time) {
     const speed = sprintOn ? SPEED_SPRINT : SPEED_WALK;
     playerPosition.x += -speed * movement.y * elapsed;
     playerPosition.y += speed * movement.x * elapsed;
-    drawFlat();
-    drawBird();
+    updateWorld();
+    var allPolygons = [];
+    var allSegments = [];
+    for (const [polygons, segments] of loadedChunks.values()) {
+        allPolygons = allPolygons.concat(polygons);
+        allSegments = allSegments.concat(segments);
+    }
+    drawFlat(allSegments);
+    drawBird(allPolygons);
     requestAnimationFrame(draw);
     previousRenderTime = time;
 }
@@ -283,7 +401,7 @@ window.addEventListener("resize", setSize);
 
 flatCanvas.addEventListener("click", () => {flatCanvas.requestPointerLock();});
 
-loadSvgWorldModel("world.svg");
+// loadSvgWorldModel("world.svg");
 
 setSize();
 draw(0);
