@@ -12,7 +12,7 @@ const BIRD_SCALE = .15;
 const CAMERA_SENSITIVITY = 0.004;  // radian per pixel
 const SPEED_WALK   = 300;          // pixels per second
 const SPEED_SPRINT = 800;          // pixels per second
-const CHUNK_SIZE   = 800;          // pixels
+const CHUNK_SIZE   = 1000;          // pixels
 const CHUNK_RADIUS = 1;
 const CHUNK_DENSITY = 5;
 const RENDER_DISTANCE = 1000;       // pixels
@@ -56,7 +56,6 @@ function generatePolygon(rng, px, py) {
     const size = 50 + rng() * 100;
     let points;
     //TODO: add more shapes (random/isosceles/equilateral triangle, rectangles, thin rectangles)
-    //TODO: add rotations
     if (polygonType == POLYGON_TYPE_TRIANGLE) {
         points = [
             [px, py],
@@ -71,6 +70,7 @@ function generatePolygon(rng, px, py) {
             [px, py + size]
         ];
     }
+    points = rotatePolygon(points, rng() * Math.PI * 2);
     const color = randomVibrantColor(rng);
     return { points: points, color };
 }
@@ -87,6 +87,24 @@ function generateChunk(cx, cy) {
         chunkSegments = chunkSegments.concat(extractSegments(polygon));
     }
     return [chunkPolygons, chunkSegments];
+}
+
+function rotatePolygon(points, theta) {
+    let cx = 0;
+    let cy = 0;
+    for (const [x, y] of points) {
+        cx += x;
+        cy += y;
+    }
+    cx /= points.length;
+    cy /= points.length;
+    const newPoints = [];
+    for (const [x, y] of points) {
+        const u = {x: x - cx, y: y - cy};
+        const v = rot(u, theta);
+        newPoints.push([v.x + cx, v.y + cy]);
+    }
+    return newPoints;
 }
 
 function updateWorld() {
