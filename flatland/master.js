@@ -4,30 +4,30 @@ const rot = (u, theta) => {return {x: u.x * Math.cos(theta) - u.y * Math.sin(the
 const normalize = (u) => {const n = norm(u); return {x: u.x / n, y: u.y / n};}
 const project = (x, fromMin, fromMax, toMin, toMax) => (x - fromMin) / (fromMax - fromMin) * (toMax - toMin) + toMin;
 
-const flatContext = flatCanvas.getContext("2d");
-const birdContext = birdCanvas.getContext("2d");
-
-const BACKGROUND_COLOR = [255, 255, 255];
-const BIRD_SCALE = .15;
-const CAMERA_SENSITIVITY = 0.004;  // radian per pixel
-const SPEED_WALK   = 300;          // pixels per second
-const SPEED_SPRINT = 800;          // pixels per second
-const CHUNK_SIZE   = 1000;          // pixels
-const CHUNK_RADIUS = 1;
-const CHUNK_DENSITY = 5;
-const RENDER_DISTANCE = 1000;       // pixels
-const FOG_START_RATIO = 0.6;
-var playerPosition = {x: 0, y: 0};
-var playerSpeed    = {x: 0, y: 0};
-var lightDirection = normalize({x: -1, y: 1});
-var fov = Math.PI / 3;
-var cameraDirection = Math.PI / 4;
-var sprintOn = false;
-var previousRenderTime = 0;
-var width = window.innerWidth;
-var height = window.innerHeight;
-var toastTimeout = null;
-var loadedChunks = new Map();
+const flatContext        = flatCanvas.getContext("2d");
+const birdContext        = birdCanvas.getContext("2d");
+const BACKGROUND_COLOR   = [255, 255, 255];
+const BIRD_SCALE         = .15;
+const CAMERA_SENSITIVITY = 0.004; // radian per pixel
+const SPEED_WALK         = 300;   // pixels per second
+const SPEED_SPRINT       = 800;   // pixels per second
+const CHUNK_SIZE         = 1000;  // pixels
+const RENDER_DISTANCE    = 1000;  // pixels
+const CHUNK_RADIUS       = 1;
+const CHUNK_DENSITY      = 5;
+const FOG_START_RATIO    = 0.6;
+var   playerPosition     = {x: 0, y: 0};
+var   playerSpeed        = {x: 0, y: 0};
+var   lightDirection     = normalize({x: -1, y: 1});
+var   fov                = Math.PI / 3;
+var   cameraDirection    = Math.PI / 4;
+var   sprintOn           = false;
+var   previousRenderTime = 0;
+var   width              = window.innerWidth;
+var   height             = window.innerHeight;
+var   toastTimeout       = null;
+var   loadedChunks       = new Map();
+var   svgPolygons        = null;
 
 function getChunkCoords(x, y) {
     return [
@@ -71,15 +71,19 @@ for (const [foo, weight] of POLYGON_WEIGHTS) {
 const TOTAL_POLYGON_WEIGHTS = total;
 
 function generateGeneralPolygonPoints(rng, px, py, sides) {
-    const points = [];
-    let theta = 0;
+    const angles = [];
+    const magnitudes = [];
     for (let i = 0; i < sides; i++) {
-        const magnitude = 100 + rng() * 50;
+        angles.push(rng() * 2 * Math.PI);
+        magnitudes.push(100 + rng() * 50);
+    }
+    angles.sort();
+    const points = [];
+    for (let i = 0; i  < sides; i++) {
         points.push([
-            px + magnitude * Math.cos(theta),
-            py + magnitude * Math.sin(theta)
+            px + magnitudes[i] * Math.cos(angles[i]),
+            py + magnitudes[i] * Math.sin(angles[i])
         ]);
-        theta = Math.min(2 * Math.PI, theta + 2 * Math.PI / sides * (rng() * 2));
     }
     return points;
 }
@@ -132,21 +136,21 @@ function generatePolygon(rng, px, py) {
     }
     points = rotatePolygon(points, rng() * Math.PI * 2);
     const color = randomVibrantColor(rng);
-    return { points: points, color };
+    const polygon = { points: points, color };
+    polygon.segments = extractSegments(polygon);
+    return polygon;
 }
 
 function generateChunk(cx, cy) {
     const rng = mulberry32(cx * 12345 + cy * 67890);
-    const chunkPolygons = [];
-    var chunkSegments = [];
+    const polygons = [];
     for (let i = 0; i < rng() * CHUNK_DENSITY; i++) {
         const px = cx * CHUNK_SIZE + rng() * CHUNK_SIZE;
         const py = cy * CHUNK_SIZE + rng() * CHUNK_SIZE;
         const polygon = generatePolygon(rng, px, py);
-        chunkPolygons.push(polygon);
-        chunkSegments = chunkSegments.concat(extractSegments(polygon));
+        polygons.push(polygon);
     }
-    return [chunkPolygons, chunkSegments];
+    return polygons;
 }
 
 function rotatePolygon(points, theta) {
@@ -167,39 +171,19 @@ function rotatePolygon(points, theta) {
     return newPoints;
 }
 
-function updateWorld() {
-    const [pcx, pcy] = getChunkCoords(playerPosition.x, playerPosition.y);
-    const needed = new Set();
-    for (let dx = -CHUNK_RADIUS; dx <= CHUNK_RADIUS; dx++) {
-        for (let dy = -CHUNK_RADIUS; dy <= CHUNK_RADIUS; dy++) {
-            const cx = pcx + dx, cy = pcy + dy;
-            const key = `${cx},${cy}`;
-            needed.add(key);
-            if (!loadedChunks.has(key)) {
-                loadedChunks.set(key, generateChunk(cx, cy));
-            }
-        }
-    }
-    for (const key of loadedChunks.keys()) {
-        if (!needed.has(key)) {
-            loadedChunks.delete(key);
-        }
-    }
-}
-
 function extractSegments(polygon) {
-    const polygonSegments = [];
+    const segments = [];
     for (let i = 0; i < polygon.points.length; i++) {
         const [x0, y0] = polygon.points[i];
         const [x1, y1] = polygon.points[(i + 1) % polygon.points.length];
-        polygonSegments.push({
+        segments.push({
             x0: x0, y0: y0, x1: x1, y1: y1,
             color: polygon.color,
             normal: normalize(rot({x: x1 - x0, y: y1 - y0}, Math.PI / 2)),
             barycenter: {x: (x0 + x1)/2, y: (y0 + y1)/2},
         });
     }
-    return polygonSegments;
+    return segments;
 }
 
 function setSize() {
@@ -272,7 +256,7 @@ async function loadSvgWorldModel(url) {
     const svgDoc = parser.parseFromString(text, "image/svg+xml");
     const scale = width / parseFloat(svgDoc.querySelector("svg").getAttribute("viewBox").split(" ")[2]);
     const paths = svgDoc.querySelectorAll("path");
-    const shapes = [];
+    const polygons = [];
     paths.forEach(path => {
         const d = path.getAttribute("d");
         const fill = extractFillColor(path);
@@ -302,12 +286,14 @@ async function loadSvgWorldModel(url) {
         } catch (e) {
             console.warn("Could not parse path", d, e);
         }
-        //addSegments({color: rgb, points: points}); TODO: update this with new world model
+        const polygon = {points: points, color: rgb};
+        polygon.segments = extractSegments(polygon);
+        polygons.push(polygon);
     });
+    return polygons;
 }
 
-
-function drawFlat(segments) {
+function drawFlatView(polygons) {
     const imageData = new ImageData(width, 1);
     for (let j = 0; j < width; j++) {
         const theta = cameraDirection - fov + j / width * 2 * fov;
@@ -317,24 +303,26 @@ function drawFlat(segments) {
         let color = [BACKGROUND_COLOR[0], BACKGROUND_COLOR[1], BACKGROUND_COLOR[2]];
         let light = 1;
         let opacity = 0;
-        for (const seg of segments) {
-            let distance = norm({x: seg.barycenter.x - playerPosition.x, y: seg.barycenter.y - playerPosition.y});
-            if (distance >= RENDER_DISTANCE) continue;
-            let t = (a * seg.x0 + b - seg.y0) / (seg.y1 - seg.y0 - a * seg.x1 + a * seg.x0);
-            if (t >= 0 && t <= 1) {
-                const x2 = (1 - t) * seg.x0 + t * seg.x1;
-                const y2 = (1 - t) * seg.y0 + t * seg.y1;
-                const u = {x: Math.cos(theta), y: Math.sin(theta)};
-                const v = {x: x2 - playerPosition.x, y: y2 - playerPosition.y};
-                if (dot(u, v) < 0) {
-                    continue;
-                }
-                distance = norm({x: x2 - playerPosition.x, y: y2 - playerPosition.y});
-                if (minDistance == undefined || distance < minDistance) {
-                    minDistance = distance;
-                    color = seg.color;
-                    light = project(dot(seg.normal, lightDirection), -1, 1, .4, 1);
-                    opacity = distance < FOG_START_RATIO * RENDER_DISTANCE ? 1 : 1 - (distance - FOG_START_RATIO * RENDER_DISTANCE) / ((1 - FOG_START_RATIO) * RENDER_DISTANCE);
+        for (const polygon of polygons) {
+            for (const segment of polygon.segments) {
+                let distance = norm({x: segment.barycenter.x - playerPosition.x, y: segment.barycenter.y - playerPosition.y});
+                if (distance >= RENDER_DISTANCE) continue;
+                let t = (a * segment.x0 + b - segment.y0) / (segment.y1 - segment.y0 - a * segment.x1 + a * segment.x0);
+                if (t >= 0 && t <= 1) {
+                    const x2 = (1 - t) * segment.x0 + t * segment.x1;
+                    const y2 = (1 - t) * segment.y0 + t * segment.y1;
+                    const u = {x: Math.cos(theta), y: Math.sin(theta)};
+                    const v = {x: x2 - playerPosition.x, y: y2 - playerPosition.y};
+                    if (dot(u, v) < 0) {
+                        continue;
+                    }
+                    distance = norm({x: x2 - playerPosition.x, y: y2 - playerPosition.y});
+                    if (minDistance == undefined || distance < minDistance) {
+                        minDistance = distance;
+                        color = segment.color;
+                        light = project(dot(segment.normal, lightDirection), -1, 1, .4, 1);
+                        opacity = distance < FOG_START_RATIO * RENDER_DISTANCE ? 1 : 1 - (distance - FOG_START_RATIO * RENDER_DISTANCE) / ((1 - FOG_START_RATIO) * RENDER_DISTANCE);
+                    }
                 }
             }
         }
@@ -346,7 +334,7 @@ function drawFlat(segments) {
     flatContext.putImageData(imageData, 0, 0);
 }
 
-function drawBird(polygons) {
+function drawBirdView(polygons) {
 
     const bX = BIRD_SCALE * (playerPosition.x - width / 2);
     const bY = BIRD_SCALE * (playerPosition.y - height / 2);
@@ -400,22 +388,36 @@ function drawBird(polygons) {
 
 }
 
-function draw(time) {
+function update(time) {
     const elapsed = (time - previousRenderTime) * 0.001;
     const movement = rot(playerSpeed, cameraDirection);
     const speed = sprintOn ? SPEED_SPRINT : SPEED_WALK;
     playerPosition.x += -speed * movement.y * elapsed;
     playerPosition.y += speed * movement.x * elapsed;
-    updateWorld();
-    var allPolygons = [];
-    var allSegments = [];
-    for (const [polygons, segments] of loadedChunks.values()) {
-        allPolygons = allPolygons.concat(polygons);
-        allSegments = allSegments.concat(segments);
+    const [pcx, pcy] = getChunkCoords(playerPosition.x, playerPosition.y);
+    const needed = new Set();
+    for (let dx = -CHUNK_RADIUS; dx <= CHUNK_RADIUS; dx++) {
+        for (let dy = -CHUNK_RADIUS; dy <= CHUNK_RADIUS; dy++) {
+            const cx = pcx + dx, cy = pcy + dy;
+            const key = `${cx},${cy}`;
+            needed.add(key);
+            if (!loadedChunks.has(key)) {
+                loadedChunks.set(key, generateChunk(cx, cy));
+            }
+        }
     }
-    drawFlat(allSegments);
-    drawBird(allPolygons);
-    requestAnimationFrame(draw);
+    for (const key of loadedChunks.keys()) {
+        if (!needed.has(key)) {
+            loadedChunks.delete(key);
+        }
+    }
+    var allPolygons = svgPolygons == null ? [] : [...svgPolygons];
+    for (const polygons of loadedChunks.values()) {
+        allPolygons = allPolygons.concat(polygons);
+    }
+    drawFlatView(allPolygons);
+    drawBirdView(allPolygons);
+    requestAnimationFrame(update);
     previousRenderTime = time;
 }
 
@@ -479,7 +481,7 @@ window.addEventListener("resize", setSize);
 
 flatCanvas.addEventListener("click", () => {flatCanvas.requestPointerLock();});
 
-// loadSvgWorldModel("world.svg");
+(async () => {svgPolygons = await loadSvgWorldModel("world.svg");})();
 
 setSize();
-draw(0);
+update(0);
