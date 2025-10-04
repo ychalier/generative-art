@@ -48,27 +48,87 @@ function mulberry32(a) {
     }
 }
 
-const POLYGON_TYPE_TRIANGLE = 0;
-const POLYGON_TYPE_SQUARE = 1;
+const POLYGON_TYPE_LINE = 0;
+const POLYGON_TYPE_TRIANGLE = 1;
+const POLYGON_TYPE_TRIANGLE_EQUILATERAL = 2;
+const POLYGON_TYPE_QUADRILATERIAL = 3;
+const POLYGON_TYPE_SQUARE = 4;
+const POLYGON_TYPE_CIRCLE = 5;
+
+const POLYGON_WEIGHTS = [
+    [POLYGON_TYPE_LINE, 1],
+    [POLYGON_TYPE_TRIANGLE, 1],
+    [POLYGON_TYPE_TRIANGLE_EQUILATERAL, 0.8],
+    [POLYGON_TYPE_QUADRILATERIAL, 1],
+    [POLYGON_TYPE_SQUARE, 0.5],
+    [POLYGON_TYPE_CIRCLE, 0.1],
+]
+
+let total = 0;
+for (const [foo, weight] of POLYGON_WEIGHTS) {
+    total += weight;
+}
+const TOTAL_POLYGON_WEIGHTS = total;
+
+function generateGeneralPolygonPoints(rng, px, py, sides) {
+    const points = [];
+    let theta = 0;
+    for (let i = 0; i < sides; i++) {
+        const magnitude = 100 + rng() * 50;
+        points.push([
+            px + magnitude * Math.cos(theta),
+            py + magnitude * Math.sin(theta)
+        ]);
+        theta = Math.min(2 * Math.PI, theta + 2 * Math.PI / sides * (rng() * 2));
+    }
+    return points;
+}
+
+function generateRegularPolygonPoints(size, px, py, sides) {
+    const points = [];
+    let theta = 0;
+    for (let i = 0; i < sides; i++) {
+        points.push([
+            px + size * Math.cos(theta),
+            py + size * Math.sin(theta)
+        ]);
+        theta += 2 * Math.PI / sides;
+    }
+    return points;
+}
 
 function generatePolygon(rng, px, py) {
-    const polygonType = Math.floor(rng() * 2);
-    const size = 50 + rng() * 100;
+    let polygonType;
+    const polygonTypeSeed = rng();
+    let cumWeight = 0;
+    for (const [pType, pWeight] of POLYGON_WEIGHTS) {
+        cumWeight += pWeight / TOTAL_POLYGON_WEIGHTS;
+        if (polygonTypeSeed < cumWeight) {
+            polygonType = pType;
+            break;
+        }
+    }
     let points;
-    //TODO: add more shapes (random/isosceles/equilateral triangle, rectangles, thin rectangles)
-    if (polygonType == POLYGON_TYPE_TRIANGLE) {
-        points = [
-            [px, py],
-            [px + size / 2, py + size],
-            [px - size / 2, py + size],
-        ];
-    } else if (polygonType == POLYGON_TYPE_SQUARE) {
+    if (polygonType == POLYGON_TYPE_LINE) {
+        const size = 50 + rng() * 100;
         points = [
             [px, py],
             [px + size, py],
-            [px + size, py + size],
-            [px, py + size]
+            [px + size, py + 1],
+            [px, py + 1],
         ];
+    } else if (polygonType == POLYGON_TYPE_TRIANGLE) {
+        points = generateGeneralPolygonPoints(rng, px, py, 3);
+    } else if (polygonType == POLYGON_TYPE_TRIANGLE_EQUILATERAL) {
+        points = generateRegularPolygonPoints(50 + rng() * 100, px, py, 3);
+    } else if (polygonType == POLYGON_TYPE_QUADRILATERIAL) {
+        points = generateGeneralPolygonPoints(rng, px, py, 4);
+    } else if (polygonType == POLYGON_TYPE_SQUARE) {
+        points = generateRegularPolygonPoints(50 + rng() * 100, px, py, 4);
+    } else if (polygonType == POLYGON_TYPE_CIRCLE) {
+        points = generateRegularPolygonPoints(50 + rng() * 100, px, py, 40);
+    } else {
+        console.error("Wrong polygon type", polygonType);
     }
     points = rotatePolygon(points, rng() * Math.PI * 2);
     const color = randomVibrantColor(rng);
