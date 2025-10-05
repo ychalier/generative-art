@@ -48,6 +48,25 @@ canvas {
     padding: .2rem .4rem;
     background: white;
 }
+#disclaimerBox {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border: 1px solid #888;
+    width: fit-content;
+    height: fit-content;
+    transform: translate(-50%, -50%);
+    padding: .2rem .4rem;
+    background: white;
+    pointer-events: none;
+}
+#disclaimerBox p {
+    margin: 0 0 .4rem 0;
+}
+#disclaimerBox ul {
+    margin: 0;
+    padding: 0 0 0 1rem;
+}
 .hidden {
     display: none;
 }
@@ -57,6 +76,23 @@ canvas {
 <body>
     <canvas id="birdCanvas" class="hidden"></canvas>
     <canvas id="flatCanvas"></canvas>
+    <div id="disclaimerBox">
+        <b>What is this:</b>
+        <p>
+            A simulation of what you would see walking around <i><a href="https://en.wikipedia.org/wiki/Flatland">Flatland</a></i>.
+        </p>
+        <b>How to use this:</b>
+        <ul>
+            <li>Move the mouse to look around</li>
+            <li>Use the arrows keys (←↑↓→) or ZQSD (AZERTY layout) to move around</li>
+            <li>Hold the SHIFT key to move faster</li>
+            <li>Hold the CTRL key and move the mouse to move the light around</li>
+            <li>Use the mouse wheel to increase/decrease the FOV</li>
+            <li>Use the 'B' key to toggle bird's-eye view</li>
+            <li>Press the 'H' key to return to the starting position</li>
+            <li>Click anywhere to start animation</li>
+        </ul>
+    </div>
     <div id="toastBar"></div>
     <script src="master.js"></script>
 </body>

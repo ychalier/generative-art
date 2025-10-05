@@ -118,8 +118,8 @@ function generatePolygon(rng, px, py) {
         points = [
             [px, py],
             [px + size, py],
-            [px + size, py + 1],
-            [px, py + 1],
+            [px + size, py + .001],
+            [px, py + .001],
         ];
     } else if (polygonType == POLYGON_TYPE_TRIANGLE) {
         points = generateGeneralPolygonPoints(rng, px, py, 3);
@@ -479,7 +479,10 @@ window.addEventListener("keyup", (event) => {
 
 window.addEventListener("resize", setSize);
 
-flatCanvas.addEventListener("click", () => {flatCanvas.requestPointerLock();});
+flatCanvas.addEventListener("click", () => {
+    disclaimerBox.classList.add("hidden");
+    flatCanvas.requestPointerLock();
+});
 
 (async () => {svgPolygons = await loadSvgWorldModel("world.svg");})();
 
