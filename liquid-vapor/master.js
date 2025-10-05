@@ -120,13 +120,35 @@ precision highp float;
 uniform sampler2D sampler;
 varying vec2 uv;
 
+uniform float u_width;
+uniform float u_height;
+uniform int u_reduce_noise;
+
 const vec3 youngColor = vec3(0.812, 0.941, 0.063);
 const vec3 oldColor   = vec3(0.063, 0.937, 0.451);
 const vec3 bgColor    = vec3(0.063, 0.063, 0.063);
 
+float spinat(float dx, float dy) {
+    vec2 coords = uv + vec2(dx, dy) / vec2(u_width, u_height);
+    vec4 color = texture2D(sampler, coords);
+    return color.w > 0.5 ? 1.0 : -1.0;
+}
+
 void main() {
     vec4 color = texture2D(sampler, uv);
-    gl_FragColor.xyz = color.w > 0.5 ? mix(youngColor, oldColor, color.x) : bgColor;
+    
+    float neighbors = spinat(-1.0, 0.0) + spinat(1.0, 0.0) + spinat(0.0, -1.0) + spinat(0.0, 1.0) + spinat(-1.0, -1.0) + spinat(1.0, -1.0) + spinat(-1.0, 1.0) + spinat(1.0, 1.0);
+    float alpha = color.w;
+    
+    if (u_reduce_noise == 1) {
+        if (neighbors >= 6.0) {
+            alpha = 1.0;
+        } else if (neighbors <= -6.0) {
+            alpha = 0.0;
+        }
+    }
+
+    gl_FragColor.xyz = alpha > 0.5 ? mix(youngColor, oldColor, color.x) : bgColor;
     gl_FragColor.w = 1.0;
 }
 `);
@@ -166,6 +188,9 @@ const uTemperature = gl.getUniformLocation(simulationProgram, "u_temp");
 const uChemicalPotential = gl.getUniformLocation(simulationProgram, "u_pot");
 const uWidth = gl.getUniformLocation(simulationProgram, "u_width");
 const uHeight = gl.getUniformLocation(simulationProgram, "u_height");
+const uWidth2 = gl.getUniformLocation(colorProgram, "u_width");
+const uHeight2 = gl.getUniformLocation(colorProgram, "u_height");
+const uReduceNoise = gl.getUniformLocation(colorProgram, "u_reduce_noise");
 const uSeed = gl.getUniformLocation(simulationProgram, "u_seed");
 const uDt = gl.getUniformLocation(simulationProgram, "u_dt");
 const uSpeed = gl.getUniformLocation(simulationProgram, "u_speed");
@@ -240,6 +265,10 @@ window.addEventListener("wheel", (event) => {
     gl.uniform1f(uSpeed, SPEEDS[speedIndex]);
 });
 
+window.addEventListener("click", () => {
+    disclaimerBox.classList.add("hidden");
+});
+
 function setup() {
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -275,6 +304,8 @@ function setup() {
 
     gl.useProgram(colorProgram);
     initializeBuffer();
+    gl.uniform1f(uWidth2, width);
+    gl.uniform1f(uHeight2, height);
     bindTexture(colorProgram, "sampler", 1, nextTexture);
 
     gl.useProgram(manualProgram);
@@ -364,6 +395,7 @@ function stopRecording() {
 }
 
 var enableOctogons = 0;
+var enableNoiseReduction = 0;
 window.addEventListener("keydown", (event) => {
     if (event.key == "s") {
         screenshot();
@@ -374,9 +406,13 @@ window.addEventListener("keydown", (event) => {
             stopRecording();
         }
     } else if (event.key == "o") {
-        gl.useProgram(simulationProgram);
         enableOctogons = 1 - enableOctogons;
+        gl.useProgram(simulationProgram);
         gl.uniform1i(uOctogon, enableOctogons);
+    } else if (event.key == "n") {
+        enableNoiseReduction = 1 - enableNoiseReduction;
+        gl.useProgram(colorProgram);
+        gl.uniform1i(uReduceNoise, enableNoiseReduction);
     }
 });
 

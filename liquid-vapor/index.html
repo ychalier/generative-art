@@ -29,6 +29,22 @@ canvas {
     left: 1rem;
     font-size: larger;
 }
+#disclaimerBox {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #101010;
+    border: 1px solid #444;
+    color: #f0f0f0;
+    font-family: monospace;
+    padding: .4rem;
+    pointer-events: none;
+}
+#disclaimerBox ul {
+    margin: 0;
+    padding: 0 0 0 1rem;
+}
 .hidden {
     display: none;
 }
@@ -37,6 +53,17 @@ canvas {
 
 <body>
     <canvas id="canvas"></canvas>
+    <div id="disclaimerBox">
+        <ul>
+            <li>Move the mouse around to change parameters</li>
+            <li>Scroll the wheel to change the simulation speed</li>
+            <li>Press 'O' to toggle the octogonal behavior</li>
+            <li>Press 'N' to toggle noise reduction</li>
+            <li>Press 'S' to take a screenshot</li>
+            <li>Press 'R' to start/stop screen recording</li>
+            <li>Click to dismiss</li>
+        </ul>
+    </div>
     <span id="recordIcon" class="hidden">🔴</span>
     <script src="master.js"></script>
 </body>
