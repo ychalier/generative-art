@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf8">
+    <title>Pursuit Curve</title>
+    <style>
+* {
+    box-sizing: border-box;
+}
+html,
+body {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    font-family: monospace;
+}
+canvas {
+    width: 100%;
+}
+#disclaimerBox {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border: 1px solid #888;
+    width: fit-content;
+    height: fit-content;
+    transform: translate(-50%, -50%);
+    padding: .2rem .4rem;
+    background: white;
+}
+#disclaimerBox p {
+    margin: 0 0 .4rem 0;
+}
+#disclaimerBox ul {
+    margin: 0;
+    padding: 0 0 0 1rem;
+}
+kbd {
+    background: #101010;
+    color: white;
+    padding: 0 .2rem;
+}
+.hidden {
+    display: none;
+}
+    </style>
+</head>
+
+<body>
+    <canvas id="mainCanvas"></canvas>
+    <div id="disclaimerBox">
+        <b>What is this:</b>
+        <p>
+            An implementation of <a href="https://en.wikipedia.org/wiki/Pursuit_curve">Pursuit curves</a>.
+        </p>
+        <b>How to use this:</b>
+        <ul>
+            <li>Move the mouse to change the "pursuit" speed</li>
+            <li>Scroll the wheel to toggle symmetry</li>
+            <li>Press <kbd>t</kbd> to show triangles, <kbd>s</kbd> for squares, <kbd>h</kbd> for hexagons, <kbd>r</kbd> for a random shape</li>
+            <li>Click anywhere to hide this message</li>
+        </ul>
+    </div>
+    <script src="master.js"></script>
+</body>
+
+</html>
