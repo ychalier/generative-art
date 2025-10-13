@@ -14,17 +14,17 @@ var symmetry = 0;
 var shape = "triangle";
 
 const shapes = {
-    "triangle": {
+    triangle: {
         shapeHeightScale: Math.sqrt(3) / 2,
         points: [[0, 0], [1, 0], [0.5, 1]],
         tiler: tileTriangles,
     },
-    "square": {
+    square: {
         shapeHeightScale: 1,
         points: [[0, 0], [1, 0], [1, 1], [0, 1]],
         tiler: tileRectangular,
     },
-    "hexagon": {
+    hexagon: {
         shapeHeightScale: Math.sqrt(3) / 2,
         points: [
             [0.25, 0],
@@ -35,6 +35,11 @@ const shapes = {
             [0, 0.5],
         ],
         tiler: tileHexagonal,
+    },
+    random: {
+        shapeHeightScale: 1,
+        points: [],
+        tiler: tilerNone,
     }
 };
 
@@ -42,7 +47,7 @@ function setup() {
     width = window.innerWidth;
     height = window.innerHeight;
     mainCanvas.width = width;
-    mainCanvas.height = height;
+    mainCanvas.height = height; 
 }
 setup();
 
@@ -81,8 +86,6 @@ function tileTriangles(s) {
 }
 
 function tileHexagonal() {
-    const w = shapeCanvas.width;
-    const h = w * Math.sqrt(3) / 2;
     const rows = 2 * Math.ceil(height / shapeHeight);
     const cols = Math.ceil(width / shapeWidth) + 1;
     for (let i = -1; i < rows; i++) {
@@ -93,6 +96,10 @@ function tileHexagonal() {
             drawShapeTile(shapeWidth * (j + 0.5) + offsetX, shapeHeight * (i / 2 + 0.5), 0, flipX, false);
         }
     }
+}
+
+function tilerNone() {
+    drawShapeTile(window.innerWidth / 2, window.innerHeight / 2);
 }
 
 function draw() {
@@ -138,13 +145,37 @@ window.addEventListener("wheel", (event) => {
     symmetry = 1 - symmetry;
     draw();
 });
+
+function generateRandomShape() {
+    const n = Math.floor(4 * Math.random()) + 4;
+    const randomPoints = [];
+    for (let i = 0; i < n; i++) {
+        const side = Math.floor(4 * Math.random());
+        if (side == 0) {
+            randomPoints.push([0, Math.random()]);
+        } else if (side == 1) {
+            randomPoints.push([1, Math.random()]);
+        } else if (side == 2) {
+            randomPoints.push([Math.random(), 0]);
+        } else {
+            randomPoints.push([Math.random(), 1]);
+        }
+    }
+    randomPoints.sort(([x0, y0], [x1, y1]) => Math.atan2(y1, x1) - Math.atan2(y0, x0));
+    shapes.random.points = randomPoints;
+}
+
 window.addEventListener("keydown", (event) => {
+    disclaimerBox.classList.add("hidden");
     if (event.key == "t") {
         shape = "triangle";
     } else if (event.key == "s") {
         shape = "square";
     } else if (event.key == "h") {
         shape = "hexagon";
+    } else if (event.key == "r") {
+        shape = "random";
+        generateRandomShape();
     } else {
         return;
     }
