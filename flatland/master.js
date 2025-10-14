@@ -6,13 +6,13 @@ const project = (x, fromMin, fromMax, toMin, toMax) => (x - fromMin) / (fromMax 
 
 const flatContext        = flatCanvas.getContext("2d");
 const birdContext        = birdCanvas.getContext("2d");
-const BACKGROUND_COLOR   = [255, 255, 255];
+const BACKGROUND_COLOR   = [0, 0, 0];
 const BIRD_SCALE         = .15;
 const CAMERA_SENSITIVITY = 0.004; // radian per pixel
 const SPEED_WALK         = 300;   // pixels per second
 const SPEED_SPRINT       = 800;   // pixels per second
-const CHUNK_SIZE         = 1000;  // pixels
-const RENDER_DISTANCE    = 1000;  // pixels
+const CHUNK_SIZE         = 800;  // pixels
+const RENDER_DISTANCE    = 800;  // pixels
 const CHUNK_RADIUS       = 1;
 const CHUNK_DENSITY      = 5;
 const FOG_START_RATIO    = 0.6;
@@ -320,8 +320,12 @@ function drawFlatView(polygons) {
                     if (minDistance == undefined || distance < minDistance) {
                         minDistance = distance;
                         color = segment.color;
-                        light = project(dot(segment.normal, lightDirection), -1, 1, .4, 1);
-                        opacity = distance < FOG_START_RATIO * RENDER_DISTANCE ? 1 : 1 - (distance - FOG_START_RATIO * RENDER_DISTANCE) / ((1 - FOG_START_RATIO) * RENDER_DISTANCE);
+                        // light = project(dot(segment.normal, lightDirection), -1, 1, .4, 1);
+                        light = Math.pow(project(distance, 0, 500, 1, 0), 2);
+                        opacity = 1;
+                        if (distance >= FOG_START_RATIO * RENDER_DISTANCE) {
+                            opacity = Math.max(0, Math.min(1, project(distance - FOG_START_RATIO * RENDER_DISTANCE, 0, (1 - FOG_START_RATIO) * RENDER_DISTANCE, 1, 0)));
+                        }
                     }
                 }
             }
