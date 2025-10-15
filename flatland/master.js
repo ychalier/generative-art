@@ -50,18 +50,20 @@ function mulberry32(a) {
 
 const POLYGON_TYPE_LINE = 0;
 const POLYGON_TYPE_TRIANGLE = 1;
-const POLYGON_TYPE_TRIANGLE_EQUILATERAL = 2;
-const POLYGON_TYPE_QUADRILATERIAL = 3;
-const POLYGON_TYPE_SQUARE = 4;
-const POLYGON_TYPE_CIRCLE = 5;
+const POLYGON_TYPE_TRIANGLE_ISOCELES = 2;
+const POLYGON_TYPE_TRIANGLE_EQUILATERAL = 3;
+const POLYGON_TYPE_QUADRILATERIAL = 4;
+const POLYGON_TYPE_SQUARE = 5;
+const POLYGON_TYPE_CIRCLE = 6;
 
 const POLYGON_WEIGHTS = [
-    [POLYGON_TYPE_LINE, 1],
+    [POLYGON_TYPE_LINE, 10],
     [POLYGON_TYPE_TRIANGLE, 1],
-    [POLYGON_TYPE_TRIANGLE_EQUILATERAL, 0.8],
+    [POLYGON_TYPE_TRIANGLE_ISOCELES, 10],
+    [POLYGON_TYPE_TRIANGLE_EQUILATERAL, 5],
     [POLYGON_TYPE_QUADRILATERIAL, 1],
-    [POLYGON_TYPE_SQUARE, 0.5],
-    [POLYGON_TYPE_CIRCLE, 0.1],
+    [POLYGON_TYPE_SQUARE, 10],
+    [POLYGON_TYPE_CIRCLE, 2],
 ]
 
 let total = 0;
@@ -86,6 +88,14 @@ function generateGeneralPolygonPoints(rng, px, py, sides) {
         ]);
     }
     return points;
+}
+
+function generateIsoceles(size, px, py, angle) {
+    return [
+        [px, py],
+        [px + size, py], 
+        [px + size / 2, py + size / 2 / Math.tan(angle / 2)]
+    ];
 }
 
 function generateRegularPolygonPoints(size, px, py, sides) {
@@ -123,6 +133,8 @@ function generatePolygon(rng, px, py) {
         ];
     } else if (polygonType == POLYGON_TYPE_TRIANGLE) {
         points = generateGeneralPolygonPoints(rng, px, py, 3);
+    } else if (polygonType == POLYGON_TYPE_TRIANGLE_ISOCELES) {
+        points = generateIsoceles(25 + rng() * 50, px, py, rng() * Math.PI / 3);
     } else if (polygonType == POLYGON_TYPE_TRIANGLE_EQUILATERAL) {
         points = generateRegularPolygonPoints(50 + rng() * 100, px, py, 3);
     } else if (polygonType == POLYGON_TYPE_QUADRILATERIAL) {
