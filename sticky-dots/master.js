@@ -210,6 +210,7 @@ void main() {
 const renderVS = `#version 300 es
 precision highp float;
 in vec2 a_uv;
+out vec2 v_uv;
 uniform sampler2D u_posTex;
 uniform float u_pointSize;
 uniform mat4 u_projection; // not used (we output clip-space directly)
@@ -218,14 +219,20 @@ void main() {
     // pos is in [-1,1] -> clip space directly
     gl_Position = vec4(pos, 0.0, 1.0);
     gl_PointSize = u_pointSize;
+    v_uv = (pos + 1.0) / 2.0;
 }`;
 
 // Render fragment shader: white pixel dots
 const renderFS = `#version 300 es
 precision highp float;
+in vec2 v_uv;
 out vec4 outColor;
+uniform sampler2D u_lumTex;
+uniform float alpha;
 void main() {
-    outColor = vec4(1.0); // white
+    vec3 col = texture(u_lumTex, v_uv).rgb;
+    float lum = 1.0 - alpha + alpha * dot(col, vec3(0.299, 0.587, 0.114));
+    outColor = vec4(lum, lum, lum, 1.0); // white
 }`;
 
 // compile programs
@@ -519,9 +526,12 @@ function frame() {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     bindTexUnit(posSrc, 0);
+    bindTexUnit(videoTexture, 1);
     
     gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_posTex'), 0);
     gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_pointSize'), TARGET_POINT_SIZE);
+    gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_lumTex'), 1);
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'alpha'), 0.1);
 
     enableParticleAttribs();
     // draw as points: number of vertices = texSize*texSize
@@ -530,7 +540,8 @@ function frame() {
     const tMs = (new Date() - timeStart);
     const introductionDurationMs = 60 * 1000;
 
-    gl.drawArrays(gl.POINTS, 0, Math.min(particleUV.count, Math.exp(tMs * Math.log(particleUV.count) / introductionDurationMs)));
+    const particlesToShow = particleUV.count; // Math.exp(tMs * Math.log(particleUV.count) / introductionDurationMs) 
+    gl.drawArrays(gl.POINTS, 0, Math.min(particleUV.count, particlesToShow));
 
     // cleanup
     gl.disableVertexAttribArray(render_a_uv);
