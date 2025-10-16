@@ -9,6 +9,7 @@ const TARGET_POINT_SIZE = 1.0; // px
 
 var BASE_ACCEL = 0.1;
 var HEAT = 1.0;
+var COLORATION = 0.1;
 const VELOCITY_DAMP = 0.995;
 const SPEED_LIMIT = 0.3;
 
@@ -531,16 +532,13 @@ function frame() {
     gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_posTex'), 0);
     gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_pointSize'), TARGET_POINT_SIZE);
     gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_lumTex'), 1);
-    gl.uniform1f(gl.getUniformLocation(renderProgram, 'alpha'), 0.1);
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'alpha'), COLORATION);
 
     enableParticleAttribs();
-    // draw as points: number of vertices = texSize*texSize
-    //gl.drawArrays(gl.POINTS, 0, particleUV.count);
 
     const tMs = (new Date() - timeStart);
-    const introductionDurationMs = 60 * 1000;
-
-    const particlesToShow = particleUV.count; // Math.exp(tMs * Math.log(particleUV.count) / introductionDurationMs) 
+    const introductionDurationMs = parseInt(slowStartMsInput.value);
+    const particlesToShow = introductionDurationMs <= 0 ? particleUV.count : Math.exp(tMs * Math.log(particleUV.count) / introductionDurationMs) 
     gl.drawArrays(gl.POINTS, 0, Math.min(particleUV.count, particlesToShow));
 
     // cleanup
@@ -606,6 +604,15 @@ window.addEventListener("touchmove", (event) => {
     if (touches.length > 0) {
         updateParameters(touches[0].pageX / window.innerWidth, touches[0].pageY / window.innerHeight);
     }
+});
+
+window.addEventListener("wheel", (event) => {
+    if (event.deltaY > 0) {
+        COLORATION += 0.1;
+    } else {
+        COLORATION -= 0.1;
+    }
+    COLORATION = Math.min(1, Math.max(0, COLORATION));
 });
 
 canvas.addEventListener("contextmenu", (event) => {
