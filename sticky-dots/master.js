@@ -6,12 +6,15 @@
 let TEX_SIZE = 512; // 512*512 = 1,048,576 particles
 const MAX_TEX_SIZE = 2048;
 const TARGET_POINT_SIZE = 1.0; // px
+var ENDING_TIME_SECONDS = 3;
+
 
 var BASE_ACCEL = 0.1;
 var HEAT = 1.0;
-var COLORATION = 0.1;
+var COLORATION = 0;
 const VELOCITY_DAMP = 0.995;
 const SPEED_LIMIT = 0.3;
+var ENDING = 0;
 
 const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true, antialias: false });
 if (!gl) {
@@ -127,6 +130,7 @@ uniform float u_baseAccel;
 uniform float u_damp;
 uniform float u_speedLimit;
 uniform float u_heat;
+uniform int u_ending;
 
 vec2 posToUV(vec2 p) {
     return p * 0.5 + 0.5;
@@ -146,7 +150,9 @@ void main() {
     vec2 dir = normalize(target - pos + vec2(1e-6));
     vec2 accel = dir * u_baseAccel;
     vel += accel * u_dt;
-    vel *= 1.0 - u_heat * lum;
+    if (u_ending == 0) {
+        vel *= 1.0 - u_heat * lum;
+    }
     vel *= pow(u_damp, u_dt * 60.0);
 
     float speed = length(vel);
@@ -180,7 +186,7 @@ void main() {
     if (pos.y < -1.0) pos.y += 2.0;
     if (pos.y >  1.0) pos.y -= 2.0;
 
-    outColor = vec4(pos, 0.0, 1.0);
+    outColor = clamp(vec4(pos, 0.0, 1.0), -1.0, 1.0);
 }`;
 
 const targetUpdateFS = `#version 300 es
@@ -192,6 +198,9 @@ uniform sampler2D u_posTex;
 uniform sampler2D u_targetTex;
 uniform float u_dt;
 uniform float u_seed;
+uniform int u_ending;
+
+#define M_PI 3.1415926535897932384626433832795
 
 float rand(vec2 coords) {
     return fract(sin(dot(coords.xy, vec2(12.9898, 78.233))) * 43758.5453);
@@ -200,9 +209,21 @@ float rand(vec2 coords) {
 void main() {
     vec4 pos = texture(u_posTex, v_uv);
     vec4 target = texture(u_targetTex, v_uv);
-    float distance = distance(pos, target);
-    if (distance < 0.01) {
+    if (u_ending == 1) {
+        //float theta = M_PI + atan(pos.y, pos.x);
+        //target.xy = vec2(cos(theta), sin(theta));
+        //float distance = distance(pos, target);
+        //if (distance < 0.9) {
+        //    
+        //}
+        target.xy = vec2(0.0, 0.0);
+    } else if (u_ending == 2) {
         target.xy = vec2(2.0 * rand(v_uv + u_seed) - 1.0, 2.0 * rand(v_uv + u_seed + 1.0) - 1.0);
+    } else {
+        float distance = distance(pos, target);
+        if (distance < 0.01) {
+            target.xy = vec2(2.0 * rand(v_uv + u_seed) - 1.0, 2.0 * rand(v_uv + u_seed + 1.0) - 1.0);
+        }
     }
     outColor = target;
 }`;
@@ -271,7 +292,7 @@ function initParticleTextures(texSize) {
     const count = texSize * texSize;
     const posData = new Float32Array(count * 4);
     const velData = new Float32Array(count * 4);
-    const targetData = new Float32Array(count * 4);
+    // const targetData = new Float32Array(count * 4);
 
     for (let i = 0; i < count; i++) {
         // initialize positions in [-1,1]
@@ -287,10 +308,10 @@ function initParticleTextures(texSize) {
         velData[i * 4 + 3] = 1.0;
 
         // initialize targets in [-1,1]
-        targetData[i * 4 + 0] = (Math.random() * 2.0 - 1.0) * 0.98;
-        targetData[i * 4 + 1] = (Math.random() * 2.0 - 1.0) * 0.98;
-        targetData[i * 4 + 2] = 0.0;
-        targetData[i * 4 + 3] = 1.0;
+        // targetData[i * 4 + 0] = (Math.random() * 2.0 - 1.0) * 0.98;
+        // targetData[i * 4 + 1] = (Math.random() * 2.0 - 1.0) * 0.98;
+        // targetData[i * 4 + 2] = 0.0;
+        // targetData[i * 4 + 3] = 1.0;
     }
 
     // create two textures for ping-ponging
@@ -298,8 +319,8 @@ function initParticleTextures(texSize) {
     const posTexB = createFloatTexture(texSize, texSize, posData, gl.NEAREST);
     const velTexA = createFloatTexture(texSize, texSize, velData, gl.NEAREST);
     const velTexB = createFloatTexture(texSize, texSize, velData, gl.NEAREST);
-    const targetTexA = createFloatTexture(texSize, texSize, targetData, gl.NEAREST);
-    const targetTexB = createFloatTexture(texSize, texSize, targetData, gl.NEAREST);
+    const targetTexA = createFloatTexture(texSize, texSize, posData, gl.NEAREST);
+    const targetTexB = createFloatTexture(texSize, texSize, posData, gl.NEAREST);
 
     const fboPosA = createFBOWithTexture(posTexA);
     const fboPosB = createFBOWithTexture(posTexB);
@@ -436,6 +457,7 @@ function enableParticleAttribs() {
 // Main frame
 
 const timeStart = new Date();
+var timeEnding = new Date();
 function frame() {
     const now = performance.now();
     let dt = (now - lastTime) / 1000.0;
@@ -468,6 +490,7 @@ function frame() {
     gl.uniform1f(gl.getUniformLocation(velProgram, 'u_heat'), HEAT);
     gl.uniform1f(gl.getUniformLocation(velProgram, 'u_damp'), VELOCITY_DAMP);
     gl.uniform1f(gl.getUniformLocation(velProgram, 'u_speedLimit'), SPEED_LIMIT);
+    gl.uniform1i(gl.getUniformLocation(velProgram, 'u_ending'), ENDING);
 
     // draw quad (3 vertices triangle trick)
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -508,6 +531,7 @@ function frame() {
     gl.uniform1i(gl.getUniformLocation(targetProgram, 'u_targetTex'), 1);
     gl.uniform1f(gl.getUniformLocation(targetProgram, 'u_dt'), dt);
     gl.uniform1f(gl.getUniformLocation(targetProgram, 'u_seed'), Math.random());
+    gl.uniform1i(gl.getUniformLocation(targetProgram, 'u_ending'), ENDING);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -530,7 +554,7 @@ function frame() {
     bindTexUnit(videoTexture, 1);
     
     gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_posTex'), 0);
-    gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_pointSize'), TARGET_POINT_SIZE);
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_pointSize'), ENDING == 0 ? TARGET_POINT_SIZE : Math.min(3, (1 * (new Date() - timeEnding) / (1000 * ENDING_TIME_SECONDS) + 1) * TARGET_POINT_SIZE));
     gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_lumTex'), 1);
     gl.uniform1f(gl.getUniformLocation(renderProgram, 'alpha'), COLORATION);
 
@@ -544,6 +568,13 @@ function frame() {
     // cleanup
     gl.disableVertexAttribArray(render_a_uv);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+
+    if (ENDING == 1 && (new Date() - timeEnding) > ENDING_TIME_SECONDS * 1000) {
+        ENDING = 2;
+    } else if (ENDING == 2) {
+        ENDING = 3;
+    }
 
     requestAnimationFrame(frame);
 }
@@ -578,6 +609,13 @@ if (e.key === '+' || e.key === '=') {
     velSrc = state.velTexA; velDst = state.velTexB;
     fboPosSrc = state.fboPosA; fboPosDst = state.fboPosB;
     fboVelSrc = state.fboVelA; fboVelDst = state.fboVelB;
+    }
+} else if (e.key == "e") {
+    if (ENDING == 0) {
+        timeEnding = new Date();
+        ENDING = 1;
+    } else {
+        ENDING = 0;
     }
 }
 });
