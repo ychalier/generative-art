@@ -1,20 +1,13 @@
-// master.js
-// GPU particle simulation (WebGL2). Positions & velocities stored in float textures.
-// Luminance is read from the <video> element's texture to influence acceleration.
-
-
-let TEX_SIZE = 512; // 512*512 = 1,048,576 particles
-const MAX_TEX_SIZE = 2048;
+const TEX_SIZE = 512; // 512*512 = 262,144 particles
 const TARGET_POINT_SIZE = 1.0; // px
-var ENDING_TIME_SECONDS = 3;
 
-
-var BASE_ACCEL = 0.1;
-var HEAT = 1.0;
-var COLORATION = 0;
-const VELOCITY_DAMP = 0.995;
-const SPEED_LIMIT = 0.3;
-var ENDING = 0;
+var baseAcceleration = 0.1;
+var heat = 1.0;
+var coloration = 0;
+var velocityDamp = 0.995;
+var speedLimit = 0.3;
+var endingStatus = 0;
+var endingDuration = 3; // seconds
 
 const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true, antialias: false });
 if (!gl) {
@@ -34,7 +27,8 @@ window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
 const extCBF = gl.getExtension("EXT_color_buffer_float");
-const extFloatLinear = gl.getExtension("OES_texture_float_linear");
+gl.getExtension("OES_texture_float_linear");
+gl.getExtension("EXT_float_blend");
 if (!extCBF) {
     alert("EXT_color_buffer_float required for float FBOs");
     throw new Error("Missing EXT_color_buffer_float");
@@ -143,7 +137,7 @@ void main() {
 
     vec2 lumUV = posToUV(pos);
     vec3 col = texture(u_lumTex, clamp(lumUV, 0.0, 1.0)).rgb;
-    float lum = dot(col, vec3(0.299, 0.587, 0.114)); // clamp((col.x + col.y + col.z) / 3.0, 0.0, 1.0);
+    float lum = dot(col, vec3(0.299, 0.587, 0.114));
 
     vec2 target = texture(u_targetTex, v_uv).xy;
 
@@ -163,8 +157,6 @@ void main() {
     outColor = vec4(vel, 0.0, 1.0);
 }`;
 
-// Position update fragment shader:
-// reads posTex, velTex -> writes new positions
 const posUpdateFS = `#version 300 es
 precision highp float;
 in vec2 v_uv;
@@ -180,13 +172,12 @@ void main() {
 
     pos += vel * u_dt;
 
-    // wrap around - keep positions in [-1,1]
     if (pos.x < -1.0) pos.x += 2.0;
     if (pos.x >  1.0) pos.x -= 2.0;
     if (pos.y < -1.0) pos.y += 2.0;
     if (pos.y >  1.0) pos.y -= 2.0;
 
-    outColor = clamp(vec4(pos, 0.0, 1.0), -1.0, 1.0);
+    outColor = vec4(pos, 0.0, 1.0);
 }`;
 
 const targetUpdateFS = `#version 300 es
@@ -200,8 +191,6 @@ uniform float u_dt;
 uniform float u_seed;
 uniform int u_ending;
 
-#define M_PI 3.1415926535897932384626433832795
-
 float rand(vec2 coords) {
     return fract(sin(dot(coords.xy, vec2(12.9898, 78.233))) * 43758.5453);
 }
@@ -210,12 +199,6 @@ void main() {
     vec4 pos = texture(u_posTex, v_uv);
     vec4 target = texture(u_targetTex, v_uv);
     if (u_ending == 1) {
-        //float theta = M_PI + atan(pos.y, pos.x);
-        //target.xy = vec2(cos(theta), sin(theta));
-        //float distance = distance(pos, target);
-        //if (distance < 0.9) {
-        //    
-        //}
         target.xy = vec2(0.0, 0.0);
     } else if (u_ending == 2) {
         target.xy = vec2(2.0 * rand(v_uv + u_seed) - 1.0, 2.0 * rand(v_uv + u_seed + 1.0) - 1.0);
@@ -228,23 +211,20 @@ void main() {
     outColor = target;
 }`;
 
-// Render particles vertex shader: each vertex carries its particle UV, samples posTex
 const renderVS = `#version 300 es
 precision highp float;
 in vec2 a_uv;
 out vec2 v_uv;
 uniform sampler2D u_posTex;
 uniform float u_pointSize;
-uniform mat4 u_projection; // not used (we output clip-space directly)
+uniform mat4 u_projection;
 void main() {
     vec2 pos = texture(u_posTex, a_uv).xy;
-    // pos is in [-1,1] -> clip space directly
     gl_Position = vec4(pos, 0.0, 1.0);
     gl_PointSize = u_pointSize;
     v_uv = (pos + 1.0) / 2.0;
 }`;
 
-// Render fragment shader: white pixel dots
 const renderFS = `#version 300 es
 precision highp float;
 in vec2 v_uv;
@@ -254,67 +234,51 @@ uniform float alpha;
 void main() {
     vec3 col = texture(u_lumTex, v_uv).rgb;
     float lum = 1.0 - alpha + alpha * dot(col, vec3(0.299, 0.587, 0.114));
-    outColor = vec4(lum, lum, lum, 1.0); // white
+    outColor = vec4(lum, lum, lum, 1.0);
 }`;
 
-// compile programs
 const velProgram = createProgram(quadVS, velUpdateFS);
 const posProgram = createProgram(quadVS, posUpdateFS);
 const targetProgram = createProgram(quadVS, targetUpdateFS);
 const renderProgram = createProgram(renderVS, renderFS);
 
-// attribute locations for quad
-const quad_pos_loc = gl.getAttribLocation(velProgram, 'a_pos');
-const quad_uv_loc = gl.getAttribLocation(velProgram, 'a_uv');
+const quad_pos_loc = gl.getAttribLocation(velProgram, "a_pos");
+const quad_uv_loc = gl.getAttribLocation(velProgram, "a_uv");
 
-// utilities to set up attribute for quad on a program
 function enableQuadAttribs(program) {
-    const posLoc = gl.getAttribLocation(program, 'a_pos');
-    const uvLoc = gl.getAttribLocation(program, 'a_uv');
+    const posLoc = gl.getAttribLocation(program, "a_pos");
+    const uvLoc = gl.getAttribLocation(program, "a_uv");
     gl.bindBuffer(gl.ARRAY_BUFFER, quadVBO);
-    // a_pos (first two floats)
     gl.enableVertexAttribArray(posLoc);
     gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 16, 0);
-    // a_uv (next two floats)
     gl.enableVertexAttribArray(uvLoc);
     gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, 16, 8);
 }
+
 function disableQuadAttribs(program) {
-    const posLoc = gl.getAttribLocation(program, 'a_pos');
-    const uvLoc = gl.getAttribLocation(program, 'a_uv');
+    const posLoc = gl.getAttribLocation(program, "a_pos");
+    const uvLoc = gl.getAttribLocation(program, "a_uv");
     gl.disableVertexAttribArray(posLoc);
     gl.disableVertexAttribArray(uvLoc);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
 
-// --- Particle data initialization (pos & vel textures) ---
 function initParticleTextures(texSize) {
     const count = texSize * texSize;
     const posData = new Float32Array(count * 4);
     const velData = new Float32Array(count * 4);
-    // const targetData = new Float32Array(count * 4);
 
     for (let i = 0; i < count; i++) {
-        // initialize positions in [-1,1]
         posData[i * 4 + 0] = (Math.random() * 2.0 - 1.0) * 0.98;
         posData[i * 4 + 1] = (Math.random() * 2.0 - 1.0) * 0.98;
         posData[i * 4 + 2] = 0.0;
         posData[i * 4 + 3] = 1.0;
-
-        // small random velocities
         velData[i * 4 + 0] = (Math.random() * 2.0 - 1.0) * 0.01;
         velData[i * 4 + 1] = (Math.random() * 2.0 - 1.0) * 0.01;
         velData[i * 4 + 2] = 0.0;
         velData[i * 4 + 3] = 1.0;
-
-        // initialize targets in [-1,1]
-        // targetData[i * 4 + 0] = (Math.random() * 2.0 - 1.0) * 0.98;
-        // targetData[i * 4 + 1] = (Math.random() * 2.0 - 1.0) * 0.98;
-        // targetData[i * 4 + 2] = 0.0;
-        // targetData[i * 4 + 3] = 1.0;
     }
 
-    // create two textures for ping-ponging
     const posTexA = createFloatTexture(texSize, texSize, posData, gl.NEAREST);
     const posTexB = createFloatTexture(texSize, texSize, posData, gl.NEAREST);
     const velTexA = createFloatTexture(texSize, texSize, velData, gl.NEAREST);
@@ -335,14 +299,12 @@ function initParticleTextures(texSize) {
     };
 }
 
-// --- Create UV buffer for particle rendering ---
 function createParticleUVBuffer(texSize) {
     const count = texSize * texSize;
     const uvs = new Float32Array(count * 2);
     let ptr = 0;
     for (let y = 0; y < texSize; y++) {
         for (let x = 0; x < texSize; x++) {
-        // use center of texel as UV to avoid exact edges
         uvs[ptr++] = (x + 0.5) / texSize;
         uvs[ptr++] = (y + 0.5) / texSize;
         }
@@ -354,32 +316,26 @@ function createParticleUVBuffer(texSize) {
     return { buf, count };
 }
 
-// Setup initial textures
 let state = initParticleTextures(TEX_SIZE);
 let particleUV = createParticleUVBuffer(TEX_SIZE);
+let videoTexture = createUInt8Texture(2, 2, null, gl.LINEAR);
 
-// video texture (luminance map)
-let videoTexture = createUInt8Texture(2, 2, null, gl.LINEAR); // placeholder tiny texture
-
-// function to update video texture each frame (if playing)
 function updateVideoTexture() {
-if (video.readyState >= 2) {
-    gl.bindTexture(gl.TEXTURE_2D, videoTexture);
-    // flipY to correct orientation if needed
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    try {
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-    } catch (e) {
-    // texImage2D with video can throw if cross-origin or not allowed
+    if (video.readyState >= 2) {
+        gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        try {
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+        } catch (e) {
+            //pass
+        }
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     }
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-}
 }
 
-// file input handler to load local video file into <video> element
-videoForm.addEventListener('submit', (ev) => {
-    ev.preventDefault();
+videoForm.addEventListener("submit", (event) => {
+    event.preventDefault();
     if (videoInput.files && videoInput.files[0]) {
         disclaimerBox.classList.add("hidden");
         setTimeout(() => {
@@ -394,27 +350,11 @@ videoForm.addEventListener('submit', (ev) => {
     }
 });
 
-// Allow drag-drop of video files onto page
-window.addEventListener('dragover', (e) => { e.preventDefault(); });
-window.addEventListener('drop', (e) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        const file = e.dataTransfer.files[0];
-        if (file.type.startsWith('video/')) {
-            const url = URL.createObjectURL(file);
-            video.src = url;
-            video.play().catch(() => {});
-        }
-    }
-});
-
-// Utility: bind texture unit with name
 function bindTexUnit(tex, unit) {
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, tex);
 }
 
-// --- Simulation loop ---
 let lastTime = performance.now();
 let posSrc = state.posTexA;
 let posDst = state.posTexB;
@@ -429,7 +369,6 @@ let fboVelDst = state.fboVelB;
 let fboTargetSrc = state.fboTargetA;
 let fboTargetDst = state.fboTargetB;
 
-// swap helper
 function swap() {
     [posSrc, posDst] = [posDst, posSrc];
     [velSrc, velDst] = [velDst, velSrc];
@@ -439,22 +378,16 @@ function swap() {
     [fboTargetSrc, fboTargetDst] = [fboTargetDst, fboTargetSrc];
 }
 
-// Render state
 gl.enable(gl.BLEND);
 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-// Particle render attribute locations
 const render_a_uv = gl.getAttribLocation(renderProgram, 'a_uv');
 
-// Setup attribute once for particle rendering
 function enableParticleAttribs() {
     gl.bindBuffer(gl.ARRAY_BUFFER, particleUV.buf);
     gl.enableVertexAttribArray(render_a_uv);
     gl.vertexAttribPointer(render_a_uv, 2, gl.FLOAT, false, 8, 0);
-// Vertex attrib divisor is 0 (one vertex per particle), not instanced
 }
-
-// Main frame
 
 const timeStart = new Date();
 var timeEnding = new Date();
@@ -462,168 +395,104 @@ function frame() {
     const now = performance.now();
     let dt = (now - lastTime) / 1000.0;
     lastTime = now;
-    // clamp dt
     if (dt > 0.05) dt = 0.05;
 
-    // update video texture
     updateVideoTexture();
 
-    // --- 1) update velocity pass: write into velDst ---
     gl.useProgram(velProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fboVelDst);
     gl.viewport(0, 0, TEX_SIZE, TEX_SIZE);
-
     enableQuadAttribs(velProgram);
-
-    // bind inputs
     bindTexUnit(posSrc, 0);
     bindTexUnit(velSrc, 1);
     bindTexUnit(videoTexture, 2);
     bindTexUnit(targetSrc, 3);
-
     gl.uniform1i(gl.getUniformLocation(velProgram, 'u_posTex'), 0);
     gl.uniform1i(gl.getUniformLocation(velProgram, 'u_velTex'), 1);
     gl.uniform1i(gl.getUniformLocation(velProgram, 'u_lumTex'), 2);
     gl.uniform1i(gl.getUniformLocation(velProgram, 'u_targetTex'), 3);
     gl.uniform1f(gl.getUniformLocation(velProgram, 'u_dt'), dt);
-    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_baseAccel'), BASE_ACCEL);
-    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_heat'), HEAT);
-    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_damp'), VELOCITY_DAMP);
-    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_speedLimit'), SPEED_LIMIT);
-    gl.uniform1i(gl.getUniformLocation(velProgram, 'u_ending'), ENDING);
-
-    // draw quad (3 vertices triangle trick)
+    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_baseAccel'), baseAcceleration);
+    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_heat'), heat);
+    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_damp'), velocityDamp);
+    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_speedLimit'), speedLimit);
+    gl.uniform1i(gl.getUniformLocation(velProgram, 'u_ending'), endingStatus);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-
     disableQuadAttribs(velProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    // --- 2) update position pass: write into posDst ---
     gl.useProgram(posProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fboPosDst);
     gl.viewport(0, 0, TEX_SIZE, TEX_SIZE);
-
     enableQuadAttribs(posProgram);
-
     bindTexUnit(posSrc, 0);
     bindTexUnit(velDst, 1);
-
     gl.uniform1i(gl.getUniformLocation(posProgram, 'u_posTex'), 0);
     gl.uniform1i(gl.getUniformLocation(posProgram, 'u_velTex'), 1);
     gl.uniform1f(gl.getUniformLocation(posProgram, 'u_dt'), dt);
-
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-
     disableQuadAttribs(posProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    // --- 2.1) update targets 
     gl.useProgram(targetProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fboTargetDst);
     gl.viewport(0, 0, TEX_SIZE, TEX_SIZE);
-
     enableQuadAttribs(targetProgram);
-
     bindTexUnit(posDst, 0);
     bindTexUnit(targetSrc, 1);
-
     gl.uniform1i(gl.getUniformLocation(targetProgram, 'u_posTex'), 0);
     gl.uniform1i(gl.getUniformLocation(targetProgram, 'u_targetTex'), 1);
     gl.uniform1f(gl.getUniformLocation(targetProgram, 'u_dt'), dt);
     gl.uniform1f(gl.getUniformLocation(targetProgram, 'u_seed'), Math.random());
-    gl.uniform1i(gl.getUniformLocation(targetProgram, 'u_ending'), ENDING);
-
+    gl.uniform1i(gl.getUniformLocation(targetProgram, 'u_ending'), endingStatus);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-
     disableQuadAttribs(targetProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    // swap ping-pong textures (now posDst & velDst become sources)
     swap();
 
-    // --- 3) render particles to screen ---
     gl.useProgram(renderProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, canvas.width, canvas.height);
-
-    // clear to black
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
-
     bindTexUnit(posSrc, 0);
     bindTexUnit(videoTexture, 1);
-    
     gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_posTex'), 0);
-    gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_pointSize'), ENDING == 0 ? TARGET_POINT_SIZE : Math.min(3, (1 * (new Date() - timeEnding) / (1000 * ENDING_TIME_SECONDS) + 1) * TARGET_POINT_SIZE));
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_pointSize'), endingStatus == 0 ? TARGET_POINT_SIZE : Math.min(3, (1 * (new Date() - timeEnding) / (1000 * endingDuration) + 1) * TARGET_POINT_SIZE));
     gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_lumTex'), 1);
-    gl.uniform1f(gl.getUniformLocation(renderProgram, 'alpha'), COLORATION);
-
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'alpha'), coloration);
     enableParticleAttribs();
-
     const tMs = (new Date() - timeStart);
     const introductionDurationMs = parseInt(slowStartMsInput.value);
     const particlesToShow = introductionDurationMs <= 0 ? particleUV.count : Math.exp(tMs * Math.log(particleUV.count) / introductionDurationMs) 
     gl.drawArrays(gl.POINTS, 0, Math.min(particleUV.count, particlesToShow));
-
-    // cleanup
     gl.disableVertexAttribArray(render_a_uv);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-
-    if (ENDING == 1 && (new Date() - timeEnding) > ENDING_TIME_SECONDS * 1000) {
-        ENDING = 2;
-    } else if (ENDING == 2) {
-        ENDING = 3;
+    if (endingStatus == 1 && (new Date() - timeEnding) > endingDuration * 1000) {
+        endingStatus = 2;
+    } else if (endingStatus == 2) {
+        endingStatus = 3;
     }
 
     requestAnimationFrame(frame);
 }
 
-// Start loop
-
-
-// --- Utility to change particle count at runtime if needed ---
-// For convenience, pressing keys + and - will upscale/downscale texture size
-window.addEventListener('keydown', (e) => {
-if (e.key === '+' || e.key === '=') {
-    const newSize = Math.min(TEX_SIZE * 2, MAX_TEX_SIZE);
-    if (newSize !== TEX_SIZE) {
-    console.log('Increasing texture to', newSize);
-    TEX_SIZE = newSize;
-    state = initParticleTextures(TEX_SIZE);
-    particleUV = createParticleUVBuffer(TEX_SIZE);
-    // reset ping-pong pointers
-    posSrc = state.posTexA; posDst = state.posTexB;
-    velSrc = state.velTexA; velDst = state.velTexB;
-    fboPosSrc = state.fboPosA; fboPosDst = state.fboPosB;
-    fboVelSrc = state.fboVelA; fboVelDst = state.fboVelB;
+window.addEventListener("keydown", (e) => {
+    if (e.key == "e") {
+        if (endingStatus == 0) {
+            timeEnding = new Date();
+            endingStatus = 1;
+        } else {
+            endingStatus = 0;
+        }
     }
-} else if (e.key === '-' || e.key === '_') {
-    const newSize = Math.max(64, TEX_SIZE / 2);
-    if (newSize !== TEX_SIZE) {
-    console.log('Decreasing texture to', newSize);
-    TEX_SIZE = newSize;
-    state = initParticleTextures(TEX_SIZE);
-    particleUV = createParticleUVBuffer(TEX_SIZE);
-    posSrc = state.posTexA; posDst = state.posTexB;
-    velSrc = state.velTexA; velDst = state.velTexB;
-    fboPosSrc = state.fboPosA; fboPosDst = state.fboPosB;
-    fboVelSrc = state.fboVelA; fboVelDst = state.fboVelB;
-    }
-} else if (e.key == "e") {
-    if (ENDING == 0) {
-        timeEnding = new Date();
-        ENDING = 1;
-    } else {
-        ENDING = 0;
-    }
-}
 });
 
 function updateParameters(x, y) {
-    BASE_ACCEL = x/2;
-    HEAT = 0.0006 * Math.exp(Math.exp(y + 1));
-    //console.log("BASE_ACCEL", BASE_ACCEL, "HEAT", HEAT);
+    baseAcceleration = x/2;
+    heat = 0.0006 * Math.exp(Math.exp(y + 1));
 }
 
 window.addEventListener("mousemove", (event) => {
@@ -646,18 +515,13 @@ window.addEventListener("touchmove", (event) => {
 
 window.addEventListener("wheel", (event) => {
     if (event.deltaY > 0) {
-        COLORATION += 0.1;
+        coloration += 0.1;
     } else {
-        COLORATION -= 0.1;
+        coloration -= 0.1;
     }
-    COLORATION = Math.min(1, Math.max(0, COLORATION));
+    coloration = Math.min(1, Math.max(0, coloration));
 });
 
 canvas.addEventListener("contextmenu", (event) => {
     event.preventDefault();
 });
-
-// --- Start with a couple helpful console logs ---
-console.log('Particle sim started. TEX_SIZE:', TEX_SIZE, 'particles:', TEX_SIZE*TEX_SIZE);
-console.log('Drop a video file onto the page or use the input to load a video. Press + / - to change texture size.');
-
