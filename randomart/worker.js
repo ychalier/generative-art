@@ -369,6 +369,7 @@ function parseGrammar(grammarText) {
             }
             let ruleNode = tertiarySplit[1].trim();
             const ruleNodeName = tertiarySplit[1].trim();
+            let argsAreRgbValues = false;
             switch(ruleNodeName) {
                 case "triple":
                     ruleNode = nodeTriple;
@@ -407,8 +408,9 @@ function parseGrammar(grammarText) {
                     ruleNode = nodeMix;
                     break;
                 case "rgb":
+                    argsAreRgbValues = true;
                     ruleNode = nodeRgb;
-                    break;
+                    break;                    
                 case "bw":
                     ruleNode = nodeBw;
                     break;
@@ -451,6 +453,21 @@ function parseGrammar(grammarText) {
                 if ((ruleArgs == null && fakeNode.arity != 0) 
                     || (ruleArgs != null && ruleArgs.length < fakeNode.arity)) {
                     throw new Error(`Not enough arguments at line ${lineIndex+1} for rule ${ruleIndex+1}`);
+                }
+            }
+            if (argsAreRgbValues && ruleArgs != null) {
+                let use255Base = false;
+                for (let i = 0; i < ruleArgs.length; i++) {
+                    use255Base = use255Base || parseFloat(ruleArgs[i]) > 1;
+                }
+                for (let i = 0; i < ruleArgs.length; i++) {
+                    let value = parseFloat(ruleArgs[i]);
+                    if (use255Base) {
+                        value = (value / 255) * 2 - 1;
+                    } else {
+                        value = value * 2 - 1;
+                    }
+                    ruleArgs[i] = value.toFixed(3);
                 }
             }
             const ruleWeight = parseFloat(tertiarySplit[3]);

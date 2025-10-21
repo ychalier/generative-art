@@ -40,6 +40,10 @@ canvas {
     font-family: monospace;
     padding: .4rem;
 }
+input,
+button {
+    font-family: inherit;
+}
 #disclaimerBox ul {
     margin: 0;
     padding: 0 0 0 1rem;
@@ -57,7 +61,9 @@ canvas {
     <canvas id="canvas"></canvas>
     <div id="disclaimerBox">
         <form id="videoForm">
-            <input type="file" id="videoInput" accept="video/*" required />
+            <label for="slowStartMsInput">Slow Start Duration (ms)</label><br>
+            <input type="number" id="slowStartMsInput" min="0" step="1" value="0"/><br>
+            <input type="file" id="videoInput" accept="video/*" required /><br>
             <button type="submit">Load Video</button>
         </form>
         <video id="video" controls loop></video>
