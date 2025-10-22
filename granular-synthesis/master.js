@@ -1,14 +1,20 @@
 const waveformCtx = waveformCanvas.getContext("2d");
 const cursorCtx = cursorCanvas.getContext("2d");
 const vuCtx = vuCanvas.getContext("2d");
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let audioBuffer;
 let cursorPos = 0;
 let rangeSize = 4410;
 let isPlaying = false;
 let grainInterval = null;
-let mouseDown = false;
 let lastTime = 0;
+const bookmarks = new Set();
+
+// Misc
+let mouseDown = false;
+const focusedInputs = new Set();
+
+// Audio stuff
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioBuffer;
 const masterGain = audioCtx.createGain();
 const analyser = audioCtx.createAnalyser();
 
@@ -44,8 +50,32 @@ function drawWaveform() {
     drawCursor();
 }
 
+function formatCursorTimestamp() {
+    if (!audioBuffer) return;
+    const cursorSec = cursorPos / audioBuffer.sampleRate;
+    const minutes = Math.floor(cursorSec / 60);
+    const seconds = Math.floor(cursorSec - 60 * minutes);
+    const milliSeconds = Math.floor((cursorSec - 60 * minutes - seconds) * 1000);
+    cursorTimestamp.value = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliSeconds.toString().padStart(3, "0")}`;
+}
+
+function parseCursorTimestamp() {
+    if (!audioBuffer) return;
+    const [minutes, seconds, milliSeconds] = cursorTimestamp.value.split(/[\:\.]/);
+    const cursorSec = 60 * parseInt(minutes) + parseInt(seconds) + parseInt(milliSeconds) / 1000;
+    if (cursorSec) setCursor(cursorSec * audioBuffer.sampleRate, false);
+}
+
 function drawCursor() {
     cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+    for (const bookmarkCursor of bookmarks) {
+        const bookmarkX = (bookmarkCursor / audioBuffer.length) * waveformCanvas.width;
+        cursorCtx.strokeStyle = "#643f0f";
+        cursorCtx.beginPath();
+        cursorCtx.moveTo(bookmarkX, 0);
+        cursorCtx.lineTo(bookmarkX, cursorCanvas.height);
+        cursorCtx.stroke();
+    }
     const cursorX = (cursorPos / audioBuffer.length) * waveformCanvas.width;
     const rangeStartX = ((cursorPos - rangeSize / 2) / audioBuffer.length) * cursorCanvas.width;
     const rangeEndX = ((cursorPos + rangeSize / 2) / audioBuffer.length) * cursorCanvas.width;
@@ -54,7 +84,11 @@ function drawCursor() {
     cursorCtx.beginPath();
     cursorCtx.moveTo(cursorX, 0);
     cursorCtx.lineTo(cursorX, cursorCanvas.height);
-    cursorCtx.strokeStyle = "#2e2150";
+    if (bookmarks.has(cursorPos)) {
+        cursorCtx.strokeStyle = "#482150ff";
+    } else {
+        cursorCtx.strokeStyle = "#2e2150";
+    }
     cursorCtx.stroke();
 }
 
@@ -185,10 +219,33 @@ function setSizes() {
     drawWaveform();
 }
 
-function setCursor(newCursor) {
+function setCursor(newCursor, setTimestamp=true) {
     if (!audioBuffer) return;
     cursorPos = Math.max(0, Math.min(audioBuffer.length - 1, Math.floor(newCursor)));
     drawCursor();
+    if (setTimestamp) {
+        formatCursorTimestamp();
+    }
+}
+
+function goToNextBookmark(goForward) {
+    if (bookmarks.size === 0) return;
+    let closest = null;
+    for (const bookmark of bookmarks) {
+        if (goForward && bookmark > cursorPos) {
+            if (closest == null || closest > bookmark) closest = bookmark;
+        } else if (!goForward && bookmark < cursorPos) {
+            if (closest == null || closest < bookmark) closest = bookmark;
+        }
+    }
+    if (closest == null) {
+        if (goForward) {
+            closest = Math.min(...bookmarks);
+        } else {
+            closest = Math.max(...bookmarks);
+        }
+    }
+    setCursor(closest);
 }
 
 setSizes();
@@ -209,8 +266,7 @@ cursorCanvas.addEventListener("mousedown", (e) => {
     if (audioBuffer) {
         const rect = cursorCanvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
-        cursorPos = Math.floor((x / cursorCanvas.width) * audioBuffer.length);
-        drawCursor();
+        setCursor(Math.floor((x / cursorCanvas.width) * audioBuffer.length));
     }
 });
 
@@ -218,8 +274,7 @@ cursorCanvas.addEventListener("mousemove", (e) => {
     if (mouseDown && audioBuffer) {
         const rect = cursorCanvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
-        cursorPos = Math.floor((x / cursorCanvas.width) * audioBuffer.length);
-        drawCursor();
+        setCursor(Math.floor((x / cursorCanvas.width) * audioBuffer.length));
     }
 });
 
@@ -260,7 +315,7 @@ audioFileDrop.addEventListener("drop", async (e) => {
 window.addEventListener("wheel", (e) => {
     if (!audioBuffer) return;
     e.preventDefault();
-    const delta = Math.sign(e.deltaY) * 1000;
+    const delta = Math.sign(-e.deltaY) * 1000;
     rangeSize = Math.max(100, rangeSize + delta);
     drawCursor();
 });
@@ -268,16 +323,43 @@ window.addEventListener("wheel", (e) => {
 playBtn.addEventListener("click", togglePlayPause);
 
 window.addEventListener("keydown", (e) => {
+    if (focusedInputs.size != 0) return;
     if (e.key == " " || e.key == "k") {
         togglePlayPause();
     } else if (e.key == "ArrowLeft") {
-        setCursor(cursorPos - 100);
+        if (e.shiftKey) {
+            goToNextBookmark(false);
+        } else {
+            setCursor(cursorPos - 100);
+        }
     } else if (e.key == "ArrowRight") {
-        setCursor(cursorPos + 100);
+        if (e.shiftKey) {
+            goToNextBookmark(true);
+        } else {
+            setCursor(cursorPos + 100);
+        }
     } else if (e.key == "r") {
         setCursor(Math.random() * audioBuffer.length);
+    } else if (e.key == "d") {
+        if (bookmarks.has(cursorPos)) {
+            bookmarks.delete(cursorPos);
+        } else {
+            bookmarks.add(cursorPos);
+        }
+        drawCursor();
     }
 });
+
+document.querySelectorAll("input").forEach(input => {
+    input.addEventListener("focusin", () => {
+        focusedInputs.add(input.getAttribute("id"));
+    });
+    input.addEventListener("focusout", () => {
+        focusedInputs.delete(input.getAttribute("id"));
+    });
+});
+
+cursorTimestamp.addEventListener("input", parseCursorTimestamp);
 
 waveformCtx.fillStyle = "white";
 waveformCtx.font = "11pt monospace";

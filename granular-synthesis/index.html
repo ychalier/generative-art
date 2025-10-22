@@ -25,11 +25,13 @@ body {
 header {
     padding: .4rem 1rem;
     display: flex;
-    gap: 1rem;
+    column-gap: 1rem;
+    row-gap: .2rem;
     background: #2e2150;
     color: #f0f0f0;
     border-bottom: 1px solid #1a132d;
     align-items: center;
+    flex-wrap: wrap;
 }
 main {
     width: 100%;
@@ -100,6 +102,7 @@ input[type=file] {
             <input type="number" id="grainDuration" value="100" min="1" max="10000">
         </label>
         <button id="playBtn">Play</button>
+        <input type="text" id="cursorTimestamp" value="00:00.000" size="9">
     </header>
     <main>
         <label for="audioFile" id="audioFileDrop">
