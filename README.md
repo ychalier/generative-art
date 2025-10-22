@@ -10,6 +10,7 @@ Name | Illustration
 [Bernoulli Percolation](bernoulli-percolation) | [![](bernoulli-percolation/bernoulli-percolation.gif)](bernoulli-percolation)
 [Chaikin Curves](chaikin-curves) | [![](chaikin-curves/chaikin.gif)](chaikin-curves)
 [Flatland](flatland) | [![](flatland/flatland.gif)](flatland)
+[Granular Synthesis](granular-synthesis) | [![](granular-synthesis/granular-synthesis.gif)](granular-synthesis)
 [Liquid Vapor](liquid-vapor) | [![](liquid-vapor/liquid-vapor.gif)](liquid-vapor)
 [Molnart](molnart) | [![](molnart/molnart.gif)](molnart)
 [Persistence of Vision](persistence-of-vision) | [![](persistence-of-vision/pov.gif)](persistence-of-vision)
