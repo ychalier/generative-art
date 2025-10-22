@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf8">
+    <title>Granular Synthesis</title>
+    <style>
+* {
+    box-sizing: border-box;
+}
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+body {
+    display: flex;
+    flex-direction: column;
+    font-family: monospace;
+}
+header {
+    padding: .4rem 1rem;
+    display: flex;
+    column-gap: 1rem;
+    row-gap: .2rem;
+    background: #2e2150;
+    color: #f0f0f0;
+    border-bottom: 1px solid #1a132d;
+    align-items: center;
+    flex-wrap: wrap;
+}
+main {
+    width: 100%;
+    height: 100%;
+    background: #101010;
+    position: relative;
+}
+#waveformCanvas,
+#cursorCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    image-rendering: crisp-edges;
+}
+#vuCanvas {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    image-rendering: crisp-edges;
+    pointer-events: none;
+}
+input,
+button,
+select,
+.input-file-label {
+    font-family: inherit;
+    border: 1px solid #1a132d;
+    background: #a587f2;
+    color: black;
+    padding: .1rem .2rem;
+}
+label {
+    display: flex;
+    align-items: center;
+    gap: .1rem;
+}
+input[type=file] {
+    display: none;
+}
+    </style>
+</head>
+
+<body>
+    <header>
+        <label id="audioFileLabel" for="audioFile" class="input-file-label">Browse</label>
+        <input type="file" id="audioFile" accept="audio/*">
+        <label>
+            Window:
+            <select id="windowSelect">
+                <option value="none">None</option>
+                <option value="gaussian" selected>Gaussian</option>
+                <option value="hanning">Hanning</option>
+                <option value="hamming">Hamming</option>
+                <option value="triangular">Triangular</option>
+                <option value="parabola">Parabola</option>
+                <option value="sine">Sine</option>
+            </select>
+        </label>
+        <label>
+            Grains per second:
+            <input type="number" id="grainCount" value="100" min="1" max="10000">
+        </label>
+        <label>
+            Grain duration (ms):
+            <input type="number" id="grainDuration" value="100" min="1" max="10000">
+        </label>
+        <button id="playBtn">Play</button>
+        <input type="text" id="cursorTimestamp" value="00:00.000" size="9">
+    </header>
+    <main>
+        <label for="audioFile" id="audioFileDrop">
+            <canvas id="waveformCanvas"></canvas>
+            <canvas id="vuCanvas" width="20" height="180"></canvas>
+            <canvas id="cursorCanvas"></canvas>
+        </label>
+    </main>
+    <script src="master.js"></script>
+</body>
+
+</html>
