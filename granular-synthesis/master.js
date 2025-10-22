@@ -23,17 +23,22 @@ function drawWaveform() {
     const channelData = audioBuffer.getChannelData(0);
     waveformCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
     waveformCtx.strokeStyle = "#f0f0f0";
+    waveformCtx.lineWidth = 2;
     waveformCtx.beginPath();
     waveformCtx.moveTo(0, waveformCanvas.height / 2);
     waveformCtx.lineTo(waveformCanvas.width, waveformCanvas.height / 2);
     waveformCtx.stroke();
     waveformCtx.beginPath();
     const step = Math.ceil(channelData.length / waveformCanvas.width);
+    let overallMax = 0;
+    for (let i = 0; i < channelData.length; i++) {
+        overallMax = Math.max(overallMax, Math.abs(channelData[i]));
+    }
     for (let i = 0; i < waveformCanvas.width; i++) {
         const min = Math.min(...channelData.slice(i * step, (i + 1) * step));
         const max = Math.max(...channelData.slice(i * step, (i + 1) * step));
-        waveformCtx.moveTo(i, (1 + min) * waveformCanvas.height / 2);
-        waveformCtx.lineTo(i, (1 + max) * waveformCanvas.height / 2);
+        waveformCtx.moveTo(i, (0.15 + 0.7 * (0.5 + 0.5 * min / overallMax)) * waveformCanvas.height);
+        waveformCtx.lineTo(i, (0.15 + 0.7 * (0.5 + 0.5 * max / overallMax)) * waveformCanvas.height);
     }
     waveformCtx.stroke();
     drawCursor();
@@ -78,6 +83,7 @@ function loop() {
     if (Math.random() < grainsToPlay - grains) {
         grains++;
     }
+    grains = Math.min(1000, grains);
     for (let g = 0; g < grains; g++) {
         const startSample = Math.max(0, cursorPos - rangeSize / 2);
         const endSample = Math.min(audioBuffer.length, cursorPos + rangeSize / 2);
