@@ -4,7 +4,7 @@
 
 <head>
     <meta charset="utf8">
-    <title>Sticky Dots</title>
+    <title>Swarm</title>
     <style>
 * {
     box-sizing: border-box;
@@ -24,35 +24,60 @@ canvas {
     image-rendering: crisp-edges;
     cursor: crosshair;
 }
-#recordIcon {
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    font-size: larger;
-}
 #disclaimerBox {
     position: absolute;
-    bottom: 2rem;
-    right: 2rem;
-    background: #101010;
-    border: 1px solid #444;
-    color: #f0f0f0;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: black;
+    border: 1px solid white;
+    color: white;
     font-family: monospace;
     padding: .4rem;
 }
 input,
-button {
+button,
+select,
+.input-file-label {
     font-family: inherit;
+    border: none;
+    background: white;
+    color: black;
+    padding: .1rem .2rem;
+    width: 100%;
 }
-#disclaimerBox ul {
-    margin: 0;
-    padding: 0 0 0 1rem;
+*:focus,
+*:active {
+    outline: none;
+}
+.input-file-label {
+    text-align: center;
+    width: 100%;
+    display: inline-block;
+    margin-top: .4rem;
+}
+button:hover,
+.input-file-label:hover {
+    background: black;
+    color: white;
+    outline: 1px solid white;
+    cursor: pointer;
+}
+input[type=file] {
+    display: none;
 }
 #video {
-    width: 300px;
+    display: none;
 }
 .hidden {
     display: none;
+}
+#disclaimerBox p {
+    max-width: 230px;
+    margin: 0;
+}
+#disclaimerBox table {
+    margin-top: .4rem;
 }
     </style>
 </head>
@@ -60,13 +85,43 @@ button {
 <body>
     <canvas id="canvas"></canvas>
     <div id="disclaimerBox">
+        <p>
+            Move the mouse around and scroll the wheel to change parameters.
+        </p>
         <form id="videoForm">
-            <label for="slowStartMsInput">Slow Start Duration (ms)</label><br>
-            <input type="number" id="slowStartMsInput" min="0" step="1" value="0"/><br>
-            <input type="file" id="videoInput" accept="video/*" required /><br>
-            <button type="submit">Load Video</button>
+            <table>
+                <tbody>
+                    <tr>
+                        <td><label for="warmupDurationInput">Warmup Duration (ms)</label></td>
+                        <td><input type="number" id="warmupDurationInput" min="0" step="1" max="99999999" value="0"/></td>
+                    </tr>
+                    <tr>
+                        <td><label for="startDurationInput">Start Duration (ms)</label></td>
+                        <td><input type="number" id="startDurationInput" min="0" step="1" max="99999999" value="0"/></td>
+                    </tr>
+                    <tr>
+                        <td><label for="pointSizeInput">Point Size</label></td>
+                        <td><input type="number" id="pointSizeInput" min="0" step="1" max="16" value="1"/></td>
+                    </tr>
+                    <tr>
+                        <td><label for="baseAccelerationInput">Base Acceleration</label></td>
+                        <td><input type="number" id="baseAccelerationInput" min="0" max="1" step="0.001" value="0.1"/></td>
+                    </tr>
+                    <tr>
+                        <td><label for="velocityDampInput">Velocity Damp</label></td>
+                        <td><input type="number" id="velocityDampInput" min="0" max="1" step="0.001" value="0.995"/></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2"><label id="videoInputLabel" for="videoInput" class="input-file-label">Browse</label></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2"><button type="submit">Start</button></td>
+                    </tr>
+                </tbody>
+            </table>
         </form>
-        <video id="video" controls loop></video>
+        <input type="file" id="videoInput" accept="video/*" required />
+        <video id="video" loop></video>
     </div>
     <span id="recordIcon" class="hidden">🔴</span>
     <script src="master.js"></script>
