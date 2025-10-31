@@ -1,13 +1,9 @@
-const TEX_SIZE = 512; // 512*512 = 262,144 particles
-const TARGET_POINT_SIZE = 1.0; // px
+const TEX_SIZE = 512;
 
-var baseAcceleration = 0.1;
-var heat = 1.0;
-var coloration = 0;
-var velocityDamp = 0.995;
-var speedLimit = 0.3;
-var endingStatus = 0;
-var endingDuration = 3; // seconds
+var heat = 1.0; // mouseY
+var coloration = 0; // mouseWheel
+var speedLimit = 0.3; // mouseX
+var warmup = false;
 
 const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true, antialias: false });
 if (!gl) {
@@ -124,7 +120,6 @@ uniform float u_baseAccel;
 uniform float u_damp;
 uniform float u_speedLimit;
 uniform float u_heat;
-uniform int u_ending;
 
 vec2 posToUV(vec2 p) {
     return p * 0.5 + 0.5;
@@ -144,9 +139,7 @@ void main() {
     vec2 dir = normalize(target - pos + vec2(1e-6));
     vec2 accel = dir * u_baseAccel;
     vel += accel * u_dt;
-    if (u_ending == 0) {
-        vel *= 1.0 - u_heat * lum;
-    }
+    vel *= 1.0 - u_heat * lum;
     vel *= pow(u_damp, u_dt * 60.0);
 
     float speed = length(vel);
@@ -189,7 +182,6 @@ uniform sampler2D u_posTex;
 uniform sampler2D u_targetTex;
 uniform float u_dt;
 uniform float u_seed;
-uniform int u_ending;
 
 float rand(vec2 coords) {
     return fract(sin(dot(coords.xy, vec2(12.9898, 78.233))) * 43758.5453);
@@ -198,15 +190,9 @@ float rand(vec2 coords) {
 void main() {
     vec4 pos = texture(u_posTex, v_uv);
     vec4 target = texture(u_targetTex, v_uv);
-    if (u_ending == 1) {
-        target.xy = vec2(0.0, 0.0);
-    } else if (u_ending == 2) {
+    float distance = distance(pos, target);
+    if (distance < 0.01) {
         target.xy = vec2(2.0 * rand(v_uv + u_seed) - 1.0, 2.0 * rand(v_uv + u_seed + 1.0) - 1.0);
-    } else {
-        float distance = distance(pos, target);
-        if (distance < 0.01) {
-            target.xy = vec2(2.0 * rand(v_uv + u_seed) - 1.0, 2.0 * rand(v_uv + u_seed + 1.0) - 1.0);
-        }
     }
     outColor = target;
 }`;
@@ -230,10 +216,10 @@ precision highp float;
 in vec2 v_uv;
 out vec4 outColor;
 uniform sampler2D u_lumTex;
-uniform float alpha;
+uniform float u_alpha;
 void main() {
     vec3 col = texture(u_lumTex, v_uv).rgb;
-    float lum = 1.0 - alpha + alpha * dot(col, vec3(0.299, 0.587, 0.114));
+    float lum = 1.0 - u_alpha + u_alpha * dot(col, vec3(0.299, 0.587, 0.114));
     outColor = vec4(lum, lum, lum, 1.0);
 }`;
 
@@ -334,6 +320,12 @@ function updateVideoTexture() {
     }
 }
 
+videoInput.addEventListener("input", async () => {
+    const file = videoInput.files[0];
+    if (!file) return;
+    videoInputLabel.textContent = file.name;
+});
+
 videoForm.addEventListener("submit", (event) => {
     event.preventDefault();
     if (videoInput.files && videoInput.files[0]) {
@@ -342,10 +334,17 @@ videoForm.addEventListener("submit", (event) => {
             const file = videoInput.files[0];
             const url = URL.createObjectURL(file);
             video.src = url;
+            warmup = true;
             video.addEventListener("canplay", () => {
                 requestAnimationFrame(frame);
             });
-            video.play().catch(() => {});
+            video.addEventListener("play", () => {
+                timeStart = new Date();
+            });
+            setTimeout(() => {
+                warmup = false;
+                video.play().catch(() => {});
+            }, parseInt(warmupDurationInput.value));
         }, 500);
     }
 });
@@ -389,15 +388,16 @@ function enableParticleAttribs() {
     gl.vertexAttribPointer(render_a_uv, 2, gl.FLOAT, false, 8, 0);
 }
 
-const timeStart = new Date();
-var timeEnding = new Date();
+var timeStart = null;
 function frame() {
     const now = performance.now();
     let dt = (now - lastTime) / 1000.0;
     lastTime = now;
     if (dt > 0.05) dt = 0.05;
 
-    updateVideoTexture();
+    if (!warmup) {
+        updateVideoTexture();
+    }
 
     gl.useProgram(velProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fboVelDst);
@@ -407,16 +407,18 @@ function frame() {
     bindTexUnit(velSrc, 1);
     bindTexUnit(videoTexture, 2);
     bindTexUnit(targetSrc, 3);
+
+    const now2 = new Date();
+
     gl.uniform1i(gl.getUniformLocation(velProgram, 'u_posTex'), 0);
     gl.uniform1i(gl.getUniformLocation(velProgram, 'u_velTex'), 1);
     gl.uniform1i(gl.getUniformLocation(velProgram, 'u_lumTex'), 2);
     gl.uniform1i(gl.getUniformLocation(velProgram, 'u_targetTex'), 3);
     gl.uniform1f(gl.getUniformLocation(velProgram, 'u_dt'), dt);
-    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_baseAccel'), baseAcceleration);
+    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_baseAccel'), parseFloat(baseAccelerationInput.value));
     gl.uniform1f(gl.getUniformLocation(velProgram, 'u_heat'), heat);
-    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_damp'), velocityDamp);
+    gl.uniform1f(gl.getUniformLocation(velProgram, 'u_damp'), parseFloat(velocityDampInput.value));
     gl.uniform1f(gl.getUniformLocation(velProgram, 'u_speedLimit'), speedLimit);
-    gl.uniform1i(gl.getUniformLocation(velProgram, 'u_ending'), endingStatus);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     disableQuadAttribs(velProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -444,7 +446,6 @@ function frame() {
     gl.uniform1i(gl.getUniformLocation(targetProgram, 'u_targetTex'), 1);
     gl.uniform1f(gl.getUniformLocation(targetProgram, 'u_dt'), dt);
     gl.uniform1f(gl.getUniformLocation(targetProgram, 'u_seed'), Math.random());
-    gl.uniform1i(gl.getUniformLocation(targetProgram, 'u_ending'), endingStatus);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     disableQuadAttribs(targetProgram);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -459,39 +460,29 @@ function frame() {
     bindTexUnit(posSrc, 0);
     bindTexUnit(videoTexture, 1);
     gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_posTex'), 0);
-    gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_pointSize'), endingStatus == 0 ? TARGET_POINT_SIZE : Math.min(3, (1 * (new Date() - timeEnding) / (1000 * endingDuration) + 1) * TARGET_POINT_SIZE));
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_pointSize'), parseInt(pointSizeInput.value));
     gl.uniform1i(gl.getUniformLocation(renderProgram, 'u_lumTex'), 1);
-    gl.uniform1f(gl.getUniformLocation(renderProgram, 'alpha'), coloration);
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'u_alpha'), coloration);
     enableParticleAttribs();
-    const tMs = (new Date() - timeStart);
-    const introductionDurationMs = parseInt(slowStartMsInput.value);
-    const particlesToShow = introductionDurationMs <= 0 ? particleUV.count : Math.exp(tMs * Math.log(particleUV.count) / introductionDurationMs) 
+    
+    let particlesToShow = 0;
+    const startDuration = parseFloat(startDurationInput.value);
+    if (startDuration == 0) {
+        particlesToShow = particleUV.count;
+    } else if (timeStart != null) {
+        const tMs = (new Date() - timeStart);
+        particlesToShow = Math.min(1, Math.pow(tMs / startDuration, 4)) * particleUV.count;
+    }
+    
     gl.drawArrays(gl.POINTS, 0, Math.min(particleUV.count, particlesToShow));
     gl.disableVertexAttribArray(render_a_uv);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-    if (endingStatus == 1 && (new Date() - timeEnding) > endingDuration * 1000) {
-        endingStatus = 2;
-    } else if (endingStatus == 2) {
-        endingStatus = 3;
-    }
-
     requestAnimationFrame(frame);
 }
 
-window.addEventListener("keydown", (e) => {
-    if (e.key == "e") {
-        if (endingStatus == 0) {
-            timeEnding = new Date();
-            endingStatus = 1;
-        } else {
-            endingStatus = 0;
-        }
-    }
-});
-
 function updateParameters(x, y) {
-    baseAcceleration = x/2;
+    speedLimit = 0.01 + x * 0.5
     heat = 0.0006 * Math.exp(Math.exp(y + 1));
 }
 
