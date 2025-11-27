@@ -18,6 +18,7 @@ Name | Illustration
 [Randomart](randomart) | [![](randomart/randomart.gif)](randomart)
 [Space Inversion](space-inversion) | [![](space-inversion/space-inversion.gif)](space-inversion)
 [Swarm](swarm) | [![](swarm/swarm.gif)](swarm)
+[Turing Patterns](turing-patterns) | [![](turing-patterns/turing-patterns.jpg)](turing-patterns)
 [Wada Bassins](wada) | [![](wada/wada.gif)](wada)
 
 You may also want to check the [IDEAS.md](IDEAS.md) document for future developments.
