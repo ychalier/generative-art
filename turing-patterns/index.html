@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf8">
+    <title>Turing Patterns</title>
+    <style>
+* {
+    box-sizing: border-box;
+}
+html,
+body {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    background: black;
+}
+canvas {
+    width: 100%;
+    height: 100%;
+    image-rendering: crisp-edges;
+    cursor: crosshair;
+}
+#disclaimerBox {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: black;
+    border: 1px solid white;
+    color: white;
+    font-family: monospace;
+    padding: .4rem;
+}
+input,
+button,
+select,
+.input-file-label {
+    font-family: inherit;
+    border: none;
+    background: white;
+    color: black;
+    padding: .1rem .2rem;
+    width: 100%;
+}
+*:focus,
+*:active {
+    outline: none;
+}
+.input-file-label {
+    text-align: center;
+    width: 100%;
+    display: inline-block;
+    margin-top: .4rem;
+}
+button:hover,
+.input-file-label:hover {
+    background: black;
+    color: white;
+    outline: 1px solid white;
+    cursor: pointer;
+}
+input[type=file] {
+    display: none;
+}
+#imageTag {
+    display: none;
+    width: 1920;
+    height: 1080;
+}
+.hidden {
+    display: none;
+}
+#disclaimerBox p {
+    max-width: 230px;
+    margin: 0;
+}
+#disclaimerBox table {
+    margin-top: .4rem;
+}
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="disclaimerBox">
+        <p>
+            Move the mouse around and scroll the wheel to change parameters.
+            Press <kbd>S</kbd> to take a snapshot.
+        </p>
+        <form id="mediaForm">
+            <table>
+                <tbody>
+                    <tr>
+                        <td colspan="2"><label id="mediaInputLabel" for="mediaInput" class="input-file-label">Browse</label></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2"><button type="submit">Start</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
+        <input type="file" id="mediaInput" accept="image/*" required />
+        <img id="imageTag" />
+    </div>
+    <script src="master.js"></script>
+</body>
+
+</html>
