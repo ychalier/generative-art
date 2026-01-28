@@ -1,3 +1,44 @@
+class Vec2 {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    copy() {
+        return new Vec2(this.x, this.y);
+    }
+
+    norm() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+    
+    normalize() {
+        const norm = this.norm();
+        if (norm === 0) return new Vec2(0, 0);
+        return this.div(norm);
+    }
+
+    add(q) {
+        return new Vec2(this.x + q.x, this.y + q.y);
+    }
+
+    diff(q) {
+        return new Vec2(this.x - q.x, this.y - q.y);
+    }
+
+    dist(q) {
+        return Math.sqrt(Math.pow(this.x - q.x, 2) + Math.pow(this.y - q.y, 2));
+    }
+
+    mul(alpha) {
+        return new Vec2(alpha * this.x, alpha * this.y);
+    }
+
+    div(alpha) {
+        return this.mul(1/alpha);
+    }
+}
+
 const mainContext = mainCanvas.getContext("2d");
 
 const width = window.innerWidth;
@@ -5,62 +46,30 @@ const height = window.innerHeight;
 mainCanvas.width = width;
 mainCanvas.height = height;
 
-// const leafContourCanvas = document.createElement("canvas");
 const leafContourContext = leafContourCanvas.getContext("2d");
 leafContourCanvas.width = width;
 leafContourCanvas.height = height;
 
-class Vec2 {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-}
+const dS = 1;
+var birthDistanceAuxinSource = 10;
+var birthDistanceVeinNode = 50;
+var killDistance = 10;
+var rho = 600 * Math.pow(10, -6);
+var D = 10;
+var widthPow = 5;
+var drawContour = false;
+var drawAuxinSources = true;
+var initialLeafLength = 650;
+var finalLeafLength = .8 * height / dS;
+// var deltaL = 0.1;
+var deltaL = 0;
 
-function dist(p, q) {
-    return Math.sqrt(Math.pow(p.x - q.x, 2) + Math.pow(p.y - q.y, 2));
-}
-
-function norm(p) {
-    return Math.sqrt(p.x * p.x + p.y * p.y);
-}
-
-function normalize(p) {
-    const n = norm(p);
-    if (n === 0) return new Vec2(0, 0);
-    return new Vec2(p.x / n, p.y / n);
-}
-
-function add(p, q) {
-    return new Vec2(p.x + q.x, p.y + q.y);
-}
-
-function diff(p, q) {
-    return new Vec2(p.x - q.x, p.y - q.y);
-}
-
-function mul(p, alpha) {
-    return new Vec2(p.x * alpha, p.y * alpha);
-}
-
-function div(p, alpha) {
-    return new Vec2(p.x / alpha, p.y / alpha);
-}
+var useLeafShape = false;
 
 
-const birthDistanceAuxinSource = 50;
-const birthDistanceVeinNode = 15;
-const killDistance = 5;
-const rho = 10;
-const D = 1;
-const widthPow = 3;
-
-const scaleRate = 1.0005;
-const scaleSpeed = 0.5;
-
-const origin = new Vec2(width / 2, .9 * height);
+const origin = new Vec2(width / 2 / dS, .9 * height / dS);
 //const origin = new Vec2((Math.random() * 0.8 + 0.1) * width, (Math.random() * 0.8 + 0.1) * height);
-const veinNodes = [new Vec2(origin.x, origin.y)];
+const veinNodes = [origin.copy()];
 const parents = [null];
 const auxinSources = [];
 const edges = [];
@@ -73,24 +82,9 @@ const leafContour = [
     [new Vec2(988.10442, 744.92070), new Vec2(1018.6211, 716.52799), new Vec2(1018.7329, 685.70663)],
     [new Vec2(1018.8447, 654.88526), new Vec2(985.72535, 590.84338), new Vec2(949.94389, 552.49611)],
 ];
-
 const leafOrigin = new Vec2(949, 762);
 
-// TODO: base scale?
-// let topLeft = null;
-// let bottomRight = null;
-// for (const [cp1, cp2, p] of leafContour) {
-//     if (topLeft == null) {
-//         topLeft = new Vec2(p.x, p.y);
-//         bottomRight = new Vec2(p.x, p.y);
-//         continue;
-//     }
-//     topLeft.x = Math.min(topLeft.x, p.x);
-//     topLeft.y = Math.min(topLeft.y, p.y);
-//     bottomRight.x = Math.max(bottomRight.x, p.x);
-//     bottomRight.y = Math.max(bottomRight.y, p.y);
-// }
-
+// Center contour around origin
 for (const ps of leafContour) {
     for (const p of ps) {
         p.x = p.x - leafOrigin.x + origin.x;
@@ -98,45 +92,95 @@ for (const ps of leafContour) {
     }
 }
 
-let it = 0;
+// Scale contour
+let topLeft = null;
+let bottomRight = null;
+for (const [cp1, cp2, p] of leafContour) {
+    if (topLeft == null) {
+        topLeft = p.copy();
+        bottomRight = p.copy();
+        continue;
+    }
+    topLeft.x = Math.min(topLeft.x, p.x);
+    topLeft.y = Math.min(topLeft.y, p.y);
+    bottomRight.x = Math.max(bottomRight.x, p.x);
+    bottomRight.y = Math.max(bottomRight.y, p.y);
+}
+const leafHeight = Math.abs(topLeft.y - bottomRight.y);
+const contourBaseScale = initialLeafLength / leafHeight;
+for (const ps of leafContour) {
+    for (const p of ps) {
+        p.x = p.x * contourBaseScale + (1 - contourBaseScale) * origin.x; 
+        p.y = p.y * contourBaseScale + (1 - contourBaseScale) * origin.y; 
+    }
+}
 
+
+//let it = 0;
+
+var currentLeafLength = initialLeafLength;
 function update() {
 
-    it++;
+    // it++;
 
-    const elapsed = it;
-    const scale = 1 + scaleSpeed * elapsed;
-    const radius = scale * width / 10;
+    // const elapsed = it;
+    // const scale = 1 + scaleSpeed * elapsed;
+    // const radius = scale * width / 10;
 
-    leafContourContext.fillStyle = "white";
-    leafContourContext.fillRect(0, 0, width, height);
-    // leafContourContext.fillStyle = "black";
-    leafContourContext.strokeStyle = "black";
-    leafContourContext.lineWidth = 50;
-    leafContourContext.beginPath();
-    leafContourContext.moveTo(leafContour[leafContour.length - 1][2].x, leafContour[leafContour.length - 1][2].y);
-    for (const [cp1, cp2, p] of leafContour) {
-        leafContourContext.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p.x, p.y);
+
+    if (useLeafShape && currentLeafLength < finalLeafLength) {
+        var newLeafLength = currentLeafLength + deltaL;
+        const scaleRate = newLeafLength / currentLeafLength;
+        currentLeafLength = newLeafLength;
+        //console.log(newLeafLength);
+        // Marginal growth
+        for (const ps of leafContour) {
+            for (const p of ps) {
+                p.x = p.x * scaleRate + (1 - scaleRate) * origin.x; 
+                p.y = p.y * scaleRate + (1 - scaleRate) * origin.y; 
+            }
+        }
     }
-    // leafContourContext.fill();
-    leafContourContext.stroke();
-    const leafContourImageData = leafContourContext.getImageData(0, 0, width, height).data;
 
-    // Throw darts to add new auxin sources
-    for (let r = 0; r < rho; r++) {
-        // const randTheta = Math.random() * 2 * Math.PI;
-        // const x = radius * Math.cos(randTheta);
-        // const y = radius * Math.sin(randTheta);
-        // const p = add(origin, new Vec2(x, y));
-        const p = new Vec2(Math.random() * width, Math.random() * height);
-        
-        const i = Math.floor(p.y);
-        const j = Math.floor(p.x);
-        if (leafContourImageData[((i * width) + j) * 4] != 0 && Math.random() > .999) continue;
+    let area;
+    let leafContourImageData;
+    if (useLeafShape) {
+        leafContourContext.fillStyle = "white";
+        leafContourContext.fillRect(0, 0, width, height);
+        leafContourContext.fillStyle = "black";
+        // leafContourContext.strokeStyle = "black";
+        // leafContourContext.lineWidth = 50;
+        leafContourContext.beginPath();
+        leafContourContext.moveTo(leafContour[leafContour.length - 1][2].x * dS, leafContour[leafContour.length - 1][2].y * dS);
+        for (const [cp1, cp2, p] of leafContour) {
+            leafContourContext.bezierCurveTo(cp1.x * dS, cp1.y * dS, cp2.x * dS, cp2.y * dS, p.x * dS, p.y * dS);
+        }
+        leafContourContext.fill();
+        // leafContourContext.stroke();
+        leafContourImageData = leafContourContext.getImageData(0, 0, width, height).data;
+        for (let i = 0; i < height; i++) {
+            for (let j = 0; j < width; j++) {
+                area += leafContourImageData[((i * width) + j) * 4] == 0 ? 1 : 0;
+            }
+        }
+    } else {
+        leafContourContext.fillStyle = "black";
+        leafContourContext.fillRect(0, 0, width, height);
+        leafContourImageData = leafContourContext.getImageData(0, 0, width, height).data;
+        area = width * height / dS / dS;
+    }
+    
+    const numberOfDarts = Math.ceil(area * rho);
+    //console.log("Number of darts:", numberOfDarts);
 
+    for (let r = 0; r < numberOfDarts; r++) {
+        const p = new Vec2(Math.random() * width / dS, Math.random() * height / dS);        
+        const i = Math.floor(p.y * dS);
+        const j = Math.floor(p.x * dS);
+        if (leafContourImageData[((i * width) + j) * 4] != 0) continue;
         let valid = true;
         for (const q of auxinSources) {
-            const d = dist(p, q);
+            const d = p.dist(q);
             if (d < birthDistanceAuxinSource) {
                 valid = false;
                 break;
@@ -144,7 +188,7 @@ function update() {
         }
         if (!valid) continue;
         for (const q of veinNodes) {
-            const d = dist(p, q);
+            const d = p.dist(q);
             if (d < birthDistanceVeinNode) {
                 valid = false;
                 break;
@@ -163,7 +207,7 @@ function update() {
         let minD, minI;
         for (let i = 0; i < veinNodes.length; i++) {
             const q = veinNodes[i];
-            const d = dist(p, q);
+            const d = p.dist(q);
             if (minD == undefined || d < minD) {
                 minD = d;
                 minI = i;
@@ -179,21 +223,19 @@ function update() {
         let v = new Vec2(0, 0);
         for (const q of influences[i]) {
             n++;
-            v = add(v, normalize(diff(q, p)));
+            v = v.add(q.diff(p).normalize());
         }
-        v = div(v, n);
-        v = add(p, mul(v, D));
-        if (v.x < 0 || v.x >= width || v.y < 0 || v.y >= height) continue;
+        v = v.div(n).mul(D).add(p)
+        if (v.x < 0 || v.x >= width / dS || v.y < 0 || v.y >= height / dS) continue;
         edges.push([i, veinNodes.length]);
         parents.push(i);
         veinNodes.push(v);
     }
 
-    // Kill auxin sources
     for (let i = auxinSources.length - 1; i >= 0; i--) {
         const p = auxinSources[i];
         for (const q of veinNodes) {
-            const d = dist(p, q);
+            const d = p.dist(q);
             if (d < killDistance) {
                 auxinSources.splice(i, 1);
                 break;
@@ -209,39 +251,33 @@ function update() {
     //     veinNodes[i] = add(mul(veinNodes[i], scaleRate), mul(origin, 1 - scaleRate));
     // }
 
-    // Marginal growth
-    for (const ps of leafContour) {
-        for (const p of ps) {
-            p.x = p.x * scaleRate + (1 - scaleRate) * origin.x; 
-            p.y = p.y * scaleRate + (1 - scaleRate) * origin.y; 
-        }
-    }
-
 }
 
 function draw() {
-    //mainContext.clearRect(0, 0, width, height);
+
     mainContext.fillStyle = "#f0f0f0";
     mainContext.fillRect(0, 0, width, height);
 
-    // Draw leaf contour
-    // mainContext.strokeStyle = "black";
-    // mainContext.lineWidth = 1;
-    // mainContext.beginPath();
-    // mainContext.moveTo(leafContour[leafContour.length - 1][2].x, leafContour[leafContour.length - 1][2].y);
-    // for (const [cp1, cp2, p] of leafContour) {
-    //     mainContext.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, p.x, p.y);
-    // }
-    // mainContext.stroke();
+    if (drawContour) {
+        mainContext.strokeStyle = "black";
+        mainContext.lineWidth = 1;
+        mainContext.beginPath();
+        mainContext.moveTo(leafContour[leafContour.length - 1][2].x * dS, leafContour[leafContour.length - 1][2].y * dS);
+        for (const [cp1, cp2, p] of leafContour) {
+            mainContext.bezierCurveTo(cp1.x * dS, cp1.y * dS, cp2.x * dS, cp2.y * dS, p.x * dS, p.y * dS);
+        }
+        mainContext.stroke();
+    }
 
-    // Draw auxin sources
-    // mainContext.fillStyle = "crimson";
-    // for (let i = 0; i < auxinSources.length; i++) {
-    //     const p = auxinSources[i];
-    //     mainContext.beginPath();
-    //     mainContext.arc(p.x, p.y, 1, 0, 2 * Math.PI);
-    //     mainContext.fill();
-    // }
+    if (drawAuxinSources) {
+        mainContext.fillStyle = "crimson";
+        for (let i = 0; i < auxinSources.length; i++) {
+            const p = auxinSources[i];
+            mainContext.beginPath();
+            mainContext.arc(p.x * dS, p.y * dS, 1, 0, 2 * Math.PI);
+            mainContext.fill();
+        }
+    }
 
     const veinWidths = [];
     for (let i = 0; i < veinNodes.length; i++) {
@@ -249,7 +285,7 @@ function draw() {
     }
     for (let i = veinNodes.length - 1; i >= 0; i--) {
         if (veinWidths[i] == 0) {
-            veinWidths[i] = 0.4; // leaf node
+            veinWidths[i] = 1; // leaf node
         } else {
             veinWidths[i] = Math.pow(veinWidths[i], 1/widthPow);
         }
@@ -263,8 +299,8 @@ function draw() {
         const v = veinNodes[j];
         mainContext.lineWidth = Math.min(veinWidths[i], veinWidths[j]);
         mainContext.beginPath();
-        mainContext.moveTo(u.x, u.y);
-        mainContext.lineTo(v.x, v.y);
+        mainContext.moveTo(u.x * dS, u.y * dS);
+        mainContext.lineTo(v.x * dS, v.y * dS);
         mainContext.stroke();
     }
 }
@@ -277,3 +313,12 @@ function frame() {
 }
 
 frame();
+
+function updateParameters(u, v) {
+    killDistance = 1 + u * 100;
+    rho = (10 + 1000 * v) * Math.pow(10, -6);
+}
+
+window.addEventListener("mousemove", (e) => {
+    updateParameters(e.clientX / width, e.clientY / height)
+});
