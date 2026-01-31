@@ -55,15 +55,15 @@ tr:has(input[name=veinWidthAnimated]:checked) ~ tr.dependVeinWidthAnimated {
                 <tbody>
                     <tr>
                         <td><label for="input-birthDistanceAuxinSource">Birth distance from auxin sources (px)</label></td>
-                        <td><input id="input-birthDistanceAuxinSource" type="number" name="birthDistanceAuxinSource" value="10" step="1" min="0"></td>
+                        <td><input id="input-birthDistanceAuxinSource" type="number" name="birthDistanceAuxinSource" value="10" step="0.001" min="0"></td>
                     </tr>
                     <tr>
                         <td><label for="input-birthDistanceVeinNode">Birth distance from vein nodes (px)</label></td>
-                        <td><input id="input-birthDistanceVeinNode" type="number" name="birthDistanceVeinNode" value="10" step="1" min="0"></td>
+                        <td><input id="input-birthDistanceVeinNode" type="number" name="birthDistanceVeinNode" value="10" step="0.001" min="0"></td>
                     </tr>
                     <tr>
                         <td><label for="input-killDistance">Kill distance (px)</label></td>
-                        <td><input id="input-killDistance" type="number" name="killDistance" value="40" step="1" min="0"></td>
+                        <td><input id="input-killDistance" type="number" name="killDistance" value="40" step="0.001" min="0"></td>
                     </tr>
                     <tr>
                         <td><label for="input-birthDensity">Birth density (/px²)</label></td>
@@ -71,11 +71,15 @@ tr:has(input[name=veinWidthAnimated]:checked) ~ tr.dependVeinWidthAnimated {
                     </tr>
                     <tr>
                         <td><label for="input-veinLength">Vein length (px)</label></td>
-                        <td><input id="input-veinLength" type="number" name="veinLength" value="1" step="1" min="0"></td>
+                        <td><input id="input-veinLength" type="number" name="veinLength" value="1" step="0.001" min="0"></td>
                     </tr>
                     <tr>
                         <td><label for="input-leafGrowth">Leaf growth (px/it)</label></td>
-                        <td><input id="input-leafGrowth" type="number" name="leafGrowth" value="0" step="1" min="0"></td>
+                        <td><input id="input-leafGrowth" type="number" name="leafGrowth" value="0" step="0.001" min="0"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="input-marginalGrowth">Marginal growth</label></td>
+                        <td><input id="input-marginalGrowth" name="marginalGrowth" type="checkbox"></td>
                     </tr>
                     <tr>
                         <td><label for="input-initialLeafLength">Initial leaf length (px)</label></td>
@@ -96,11 +100,15 @@ tr:has(input[name=veinWidthAnimated]:checked) ~ tr.dependVeinWidthAnimated {
                     </tr>
                     <tr>
                         <td><label for="input-veinWidthExponent">Vein width exponent</label></td>
-                        <td><input id="input-veinWidthExponent" name="veinWidthExponent" type="number" value="3" step="0.1" min="0"></td>
+                        <td><input id="input-veinWidthExponent" name="veinWidthExponent" type="number" value="3" step="0.001" min="0"></td>
                     </tr>
                     <tr>
                         <td><label for="input-veinWidthBase">Vein width base (px)</label></td>
-                        <td><input id="input-veinWidthBase" name="veinWidthBase" type="number" value="1" step="0.1" min="0"></td>
+                        <td><input id="input-veinWidthBase" name="veinWidthBase" type="number" value="1" step="0.001" min="0"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="input-veinWidthMax">Vein width max (px)</label></td>
+                        <td><input id="input-veinWidthMax" name="veinWidthMax" type="number" value="5" step="0.001" min="0"></td>
                     </tr>
                     <tr>
                         <td><label for="input-contourStroke">Draw leaf contour</label></td>

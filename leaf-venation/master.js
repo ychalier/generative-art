@@ -153,6 +153,7 @@ class LeafVenation {
         if (!("killDistance"              in this.options)) this.options.killDistance              = 40;
         if (!("birthDensity"              in this.options)) this.options.birthDensity              = Math.pow(10, -6);
         if (!("veinLength"                in this.options)) this.options.veinLength                = 1;
+        if (!("marginalGrowth"            in this.options)) this.options.marginalGrowth            = true;
         if (!("leafGrowth"                in this.options)) this.options.leafGrowth                = 0;
         if (!("initialLeafLength"         in this.options)) this.options.initialLeafLength         = 0.1 * height;
         if (!("finalLeafLength"           in this.options)) this.options.finalLeafLength           = 0.9 * height;
@@ -170,6 +171,7 @@ class LeafVenation {
         if (!("auxinSourceRadius"         in this.options)) this.options.auxinSourceRadius         = 1;
         if (!("veinWidthExponent"         in this.options)) this.options.veinWidthExponent         = 3;
         if (!("veinWidthBase"             in this.options)) this.options.veinWidthBase             = 1;
+        if (!("veinWidthMax"              in this.options)) this.options.veinWidthMax              = 5;
         if (!("veinWidthAnimated"         in this.options)) this.options.veinWidthAnimated         = true;
         if (!("veinWidthSpatialFrequency" in this.options)) this.options.veinWidthSpatialFrequency = 0.01;
         if (!("veinWidthTimeFrequency"    in this.options)) this.options.veinWidthTimeFrequency    = 1;
@@ -182,6 +184,7 @@ class LeafVenation {
         this.auxinSources = [];
         this.parents = [null];
         this.edges = [];
+        this.auxinSourcesPool = null;
     }
 
     isWithinLeaf(y, x) {
@@ -211,30 +214,56 @@ class LeafVenation {
     }
 
     addAuxinSources(leafArea) {
-        const numberOfDarts = Math.ceil(leafArea * this.options.birthDensity);
-        for (let r = 0; r < numberOfDarts; r++) {
-            const p = new Vec2(Math.random() * width, Math.random() * height);
-            const i = Math.floor(p.y);
-            const j = Math.floor(p.x);
-            if (!(this.isWithinLeaf(p.y, p.x))) continue;
-            let valid = true;
-            for (const q of this.auxinSources) {
-                const d = p.dist(q);
-                if (d < this.options.birthDistanceAuxinSource) {
-                    valid = false;
-                    break;
+        if (this.options.marginalGrowth) {
+            if (this.auxinSourcesPool == null) {
+                this.auxinSourcesPool = [];
+                const totalArea = width * height;
+                const numberOfDarts = Math.ceil(totalArea * this.options.birthDensity);
+                for (let r = 0; r < numberOfDarts; r++) {
+                    const p = new Vec2(Math.random() * width, Math.random() * height);
+                    let valid = true;
+                    for (const q of this.auxinSourcesPool) {
+                        const d = p.dist(q);
+                        if (d < this.options.birthDistanceAuxinSource) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if (!valid) continue;
+                    this.auxinSourcesPool.push(p);
                 }
             }
-            if (!valid) continue;
-            for (const q of this.veinNodes) {
-                const d = p.dist(q);
-                if (d < this.options.birthDistanceVeinNode) {
-                    valid = false;
-                    break;
+            for (let i = this.auxinSourcesPool.length - 1; i >= 0; i--) {
+                const p = this.auxinSourcesPool[i];
+                if (this.isWithinLeaf(p.y, p.x)) {
+                    this.auxinSources.push(p);
+                    this.auxinSourcesPool.splice(i, 1);
                 }
             }
-            if (!valid) continue;
-            this.auxinSources.push(p);
+        } else {
+            const numberOfDarts = Math.ceil(leafArea * this.options.birthDensity);
+            for (let r = 0; r < numberOfDarts; r++) {
+                const p = new Vec2(Math.random() * width, Math.random() * height);
+                if (!(this.isWithinLeaf(p.y, p.x))) continue;
+                let valid = true;
+                for (const q of this.auxinSources) {
+                    const d = p.dist(q);
+                    if (d < this.options.birthDistanceAuxinSource) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (!valid) continue;
+                for (const q of this.veinNodes) {
+                    const d = p.dist(q);
+                    if (d < this.options.birthDistanceVeinNode) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (!valid) continue;
+                this.auxinSources.push(p);
+            }
         }
     }
 
@@ -331,6 +360,9 @@ class LeafVenation {
             if (this.parents[i] == null) continue;
             veinWidths[this.parents[i]] += Math.pow(veinWidths[i], this.options.veinWidthExponent);
         }
+        for (let i = 0; i < veinWidths.length; i++) {
+            veinWidths[i] = Math.min(this.options.veinWidthMax, veinWidths[i]);
+        }
         return veinWidths;
     }
 
@@ -410,20 +442,17 @@ class LeafVenation {
 
 }
 
-// const lf = new LeafVenation({
-//     // leafContour: new BezierContour(
-//     //     [
-//     //         new Vec2(915.19414, 590.79297), new Vec2(877.32251, 634.44264), new Vec2(876.78729, 684.61474),
-//     //         new Vec2(876.25208, 734.78683), new Vec2(901.32777, 738.38129), new Vec2(923.73855, 750.94703),
-//     //         new Vec2(936.75904, 758.24763), new Vec2(936.00370, 765.14159), new Vec2(949.12498, 765.14159),
-//     //         new Vec2(962.14652, 765.14159), new Vec2(957.81782, 760.59050), new Vec2(969.59790, 754.49567),
-//     //         new Vec2(988.10442, 744.92070), new Vec2(1018.6211, 716.52799), new Vec2(1018.7329, 685.70663),
-//     //         new Vec2(1018.8447, 654.88526), new Vec2(985.72535, 590.84338), new Vec2(949.94389, 552.49611),
-//     //     ],
-//     //     new Vec2(949, 762),
-//     // ),
-//     // leafOrigin: new Vec2(0.5 * width, 0.95 * height),
-// });
+const DEFAULT_LEAF_CONTOUR = new BezierContour(
+    [
+        new Vec2(915.19414, 590.79297), new Vec2(877.32251, 634.44264), new Vec2(876.78729, 684.61474),
+        new Vec2(876.25208, 734.78683), new Vec2(901.32777, 738.38129), new Vec2(923.73855, 750.94703),
+        new Vec2(936.75904, 758.24763), new Vec2(936.00370, 765.14159), new Vec2(949.12498, 765.14159),
+        new Vec2(962.14652, 765.14159), new Vec2(957.81782, 760.59050), new Vec2(969.59790, 754.49567),
+        new Vec2(988.10442, 744.92070), new Vec2(1018.6211, 716.52799), new Vec2(1018.7329, 685.70663),
+        new Vec2(1018.8447, 654.88526), new Vec2(985.72535, 590.84338), new Vec2(949.94389, 552.49611),
+    ],
+    new Vec2(949, 762),
+);
 
 function frame() {
     lf.next();
@@ -435,19 +464,18 @@ function onOptionsFormSubmit(e) {
     e.preventDefault();
     startMenu.close();
     const formData = new FormData(optionsForm);
-    console.log("contourStroke", formData.get("contourStroke"));
-    console.log("veinWidthAnimated", formData.get("veinWidthAnimated"));
     lf = new LeafVenation({
-        birthDistanceAuxinSource:  parseFloat(formData.get("birthDistanceAuxinSource")),
-        birthDistanceVeinNode:  parseFloat(formData.get("birthDistanceVeinNode")),
-        killDistance:  parseFloat(formData.get("killDistance")),
-        birthDensity:  parseFloat(formData.get("birthDensity")),
-        veinLength:  parseFloat(formData.get("veinLength")),
+        birthDistanceAuxinSource: parseFloat(formData.get("birthDistanceAuxinSource")),
+        birthDistanceVeinNode: parseFloat(formData.get("birthDistanceVeinNode")),
+        killDistance: parseFloat(formData.get("killDistance")),
+        birthDensity: parseFloat(formData.get("birthDensity")),
+        veinLength: parseFloat(formData.get("veinLength")),
+        marginalGrowth: formData.get("marginalGrowth") == "on",
         leafGrowth: parseFloat(formData.get("leafGrowth")),
         initialLeafLength: parseFloat(formData.get("initialLeafLength")),
         finalLeafLength: parseFloat(formData.get("finalLeafLength")),
-        // leafOrigin: formData.get("leafOrigin"),
-        // leafContour: formData.get("leafContour"),
+        leafOrigin: new Vec2(0.5 * width, 0.95 * height),//TODO
+        leafContour: DEFAULT_LEAF_CONTOUR,//TODO
         backgroundColor: formData.get("backgroundColor"),
         veinColor: formData.get("veinColor"),
         contourStroke: formData.get("contourStroke") == "on",
@@ -460,6 +488,7 @@ function onOptionsFormSubmit(e) {
         auxinSourceRadius: parseFloat(formData.get("auxinSourceRadius")),
         veinWidthExponent: parseFloat(formData.get("veinWidthExponent")),
         veinWidthBase: parseFloat(formData.get("veinWidthBase")),
+        veinWidthMax: parseFloat(formData.get("veinWidthMax")),
         veinWidthAnimated: formData.get("veinWidthAnimated") == "on",
         veinWidthSpatialFrequency: parseFloat(formData.get("veinWidthSpatialFrequency")),
         veinWidthTimeFrequency: parseFloat(formData.get("veinWidthTimeFrequency")),
