@@ -3,6 +3,8 @@ const leafContourContext = leafContourCanvas.getContext("2d");
 
 var width;
 var height;
+var lf;
+const timeStart = new Date();
 
 class Vec2 {
     constructor(x, y) {
@@ -45,7 +47,7 @@ class Vec2 {
     }
 }
 
-function resize() {
+function onResize() {
     width = window.innerWidth;
     height = window.innerHeight;
     mainCanvas.width = width;
@@ -139,8 +141,6 @@ class FullContour extends LeafContour {
 
 }
 
-const timeStart = new Date();
-
 class LeafVenation {
 
     constructor(options) {
@@ -158,13 +158,13 @@ class LeafVenation {
         if (!("finalLeafLength"           in this.options)) this.options.finalLeafLength           = 0.9 * height;
         if (!("leafOrigin"                in this.options)) this.options.leafOrigin                = new Vec2(.5 * width, .5 * height);
         if (!("leafContour"               in this.options)) this.options.leafContour               = new FullContour();
+        if (!("backgroundColor"           in this.options)) this.options.backgroundColor           = "#1c1b22";
+        if (!("veinColor"                 in this.options)) this.options.veinColor                 = "#8b0404";
         if (!("contourStroke"             in this.options)) this.options.contourStroke             = false;
         if (!("contourStrokeColor"        in this.options)) this.options.contourStrokeColor        = "#000000";
         if (!("contourStrokeWidth"        in this.options)) this.options.contourStrokeWidth        = 1;
         if (!("contourFill"               in this.options)) this.options.contourFill               = false;
         if (!("contourFillColor"          in this.options)) this.options.contourFillColor          = "#cccccc";
-        if (!("backgroundColor"           in this.options)) this.options.backgroundColor           = "#1c1b22";
-        if (!("veinColor"                 in this.options)) this.options.veinColor                 = "#8b0404";
         if (!("auxinSourceFill"           in this.options)) this.options.auxinSourceFill           = false;
         if (!("auxinSourceColor"          in this.options)) this.options.auxinSourceColor          = "#dc143c";
         if (!("auxinSourceRadius"         in this.options)) this.options.auxinSourceRadius         = 1;
@@ -410,23 +410,20 @@ class LeafVenation {
 
 }
 
-resize();
-
-const lf = new LeafVenation({
-    // leafContour: new BezierContour(
-    //     [
-    //         new Vec2(915.19414, 590.79297), new Vec2(877.32251, 634.44264), new Vec2(876.78729, 684.61474),
-    //         new Vec2(876.25208, 734.78683), new Vec2(901.32777, 738.38129), new Vec2(923.73855, 750.94703),
-    //         new Vec2(936.75904, 758.24763), new Vec2(936.00370, 765.14159), new Vec2(949.12498, 765.14159),
-    //         new Vec2(962.14652, 765.14159), new Vec2(957.81782, 760.59050), new Vec2(969.59790, 754.49567),
-    //         new Vec2(988.10442, 744.92070), new Vec2(1018.6211, 716.52799), new Vec2(1018.7329, 685.70663),
-    //         new Vec2(1018.8447, 654.88526), new Vec2(985.72535, 590.84338), new Vec2(949.94389, 552.49611),
-    //     ],
-    //     new Vec2(949, 762),
-    // ),
-    // leafGrowth: 1,
-    // leafOrigin: new Vec2(0.5 * width, 0.95 * height),
-});
+// const lf = new LeafVenation({
+//     // leafContour: new BezierContour(
+//     //     [
+//     //         new Vec2(915.19414, 590.79297), new Vec2(877.32251, 634.44264), new Vec2(876.78729, 684.61474),
+//     //         new Vec2(876.25208, 734.78683), new Vec2(901.32777, 738.38129), new Vec2(923.73855, 750.94703),
+//     //         new Vec2(936.75904, 758.24763), new Vec2(936.00370, 765.14159), new Vec2(949.12498, 765.14159),
+//     //         new Vec2(962.14652, 765.14159), new Vec2(957.81782, 760.59050), new Vec2(969.59790, 754.49567),
+//     //         new Vec2(988.10442, 744.92070), new Vec2(1018.6211, 716.52799), new Vec2(1018.7329, 685.70663),
+//     //         new Vec2(1018.8447, 654.88526), new Vec2(985.72535, 590.84338), new Vec2(949.94389, 552.49611),
+//     //     ],
+//     //     new Vec2(949, 762),
+//     // ),
+//     // leafOrigin: new Vec2(0.5 * width, 0.95 * height),
+// });
 
 function frame() {
     lf.next();
@@ -434,6 +431,44 @@ function frame() {
     requestAnimationFrame(frame)
 }
 
-window.addEventListener("resize", resize);
+function onOptionsFormSubmit(e) {
+    e.preventDefault();
+    startMenu.close();
+    const formData = new FormData(optionsForm);
+    console.log("contourStroke", formData.get("contourStroke"));
+    console.log("veinWidthAnimated", formData.get("veinWidthAnimated"));
+    lf = new LeafVenation({
+        birthDistanceAuxinSource:  parseFloat(formData.get("birthDistanceAuxinSource")),
+        birthDistanceVeinNode:  parseFloat(formData.get("birthDistanceVeinNode")),
+        killDistance:  parseFloat(formData.get("killDistance")),
+        birthDensity:  parseFloat(formData.get("birthDensity")),
+        veinLength:  parseFloat(formData.get("veinLength")),
+        leafGrowth: parseFloat(formData.get("leafGrowth")),
+        initialLeafLength: parseFloat(formData.get("initialLeafLength")),
+        finalLeafLength: parseFloat(formData.get("finalLeafLength")),
+        // leafOrigin: formData.get("leafOrigin"),
+        // leafContour: formData.get("leafContour"),
+        backgroundColor: formData.get("backgroundColor"),
+        veinColor: formData.get("veinColor"),
+        contourStroke: formData.get("contourStroke") == "on",
+        contourStrokeColor: formData.get("contourStrokeColor"),
+        contourStrokeWidth: parseFloat(formData.get("contourStrokeWidth")),
+        contourFill: formData.get("contourFill") == "on",
+        contourFillColor: formData.get("contourFillColor"),
+        auxinSourceFill: formData.get("auxinSourceFill") == "on",
+        auxinSourceColor: formData.get("auxinSourceColor"),
+        auxinSourceRadius: parseFloat(formData.get("auxinSourceRadius")),
+        veinWidthExponent: parseFloat(formData.get("veinWidthExponent")),
+        veinWidthBase: parseFloat(formData.get("veinWidthBase")),
+        veinWidthAnimated: formData.get("veinWidthAnimated") == "on",
+        veinWidthSpatialFrequency: parseFloat(formData.get("veinWidthSpatialFrequency")),
+        veinWidthTimeFrequency: parseFloat(formData.get("veinWidthTimeFrequency")),
+        veinWidthAmplitude: parseFloat(formData.get("veinWidthAmplitude")),
+    });
+    frame();
+}
 
-frame();
+window.addEventListener("resize", onResize);
+optionsForm.addEventListener("submit", onOptionsFormSubmit);
+onResize();
+startMenu.showModal();
