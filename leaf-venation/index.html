@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf8">
+    <meta name="viewport" content="width=device-width">
+    <title>Leaf Venation</title>
+    <style>
+* {
+    box-sizing: border-box;
+}
+html,
+body {
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    font-family: monospace;
+}
+input,
+button {
+    font-family: inherit;
+}
+#mainCanvas {
+    width: 100%;
+    height: 100%;
+}
+#leafContourCanvas {
+    display: none;
+}
+.dependContourStroke,
+.dependContourFill,
+.dependAuxinSourceFill,
+.dependVeinWidthAnimated {
+    display: none;
+}
+tr:has(input[name=contourStroke]:checked) ~ tr.dependContourStroke,
+tr:has(input[name=contourFill]:checked) ~ tr.dependContourFill,
+tr:has(input[name=auxinSourceFill]:checked) ~ tr.dependAuxinSourceFill,
+tr:has(input[name=veinWidthAnimated]:checked) ~ tr.dependVeinWidthAnimated {
+    display: table-row;
+}
+#leafContourCanvasInput {
+    border: 1px solid black;
+}
+@media (max-width: 800px) {
+    .hide-on-mobile {
+        display: none;
+    }
+}
+    </style>
+</head>
+
+<body>
+    <canvas id="mainCanvas"></canvas>
+    <canvas id="leafContourCanvas"></canvas>
+    <dialog id="startMenu">
+        <h1>Leaf Venation Pattern Generator</h1>
+        <p>
+            This tool generates leaf venation patterns using the algorithm
+            described in <i>Modeling and visualization of leaf venation patterns</i>
+            by Adam Runions, Martin Fuhrer, Brendan Lane, Pavol Federl,
+            Anne-Gaëlle Rolland-Lagan and Przemyslaw Prusinkiewicz.
+            Please refer to the paper for details about parameters.
+            <br>
+            This tool serves no purpose other than being fun, so please have fun with it.
+        </p>
+        <form id="optionsForm">
+            <input id="inputLeafContourPoints" name="leafContourPoints" hidden>
+            <input id="inputLeafContourOrigin" name="leafContourOrigin" hidden>
+            <input id="inputOrigin" name="leafOrigin" hidden>
+            <table>
+                <tbody>
+                    <tr>
+                        <td>
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td><label for="input-birthDistanceAuxinSource">Birth distance from auxin sources (px)</label></td>
+                                        <td><input id="input-birthDistanceAuxinSource" type="number" name="birthDistanceAuxinSource" value="10" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-birthDistanceVeinNode">Birth distance from vein nodes (px)</label></td>
+                                        <td><input id="input-birthDistanceVeinNode" type="number" name="birthDistanceVeinNode" value="10" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-killDistance">Kill distance (px)</label></td>
+                                        <td><input id="input-killDistance" type="number" name="killDistance" value="40" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-birthDensity">Birth density (/px²)</label></td>
+                                        <td><input id="input-birthDensity" type="number" name="birthDensity" value="0.000001" step="0.0000001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-veinLength">Vein length (px)</label></td>
+                                        <td><input id="input-veinLength" type="number" name="veinLength" value="1" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-leafGrowth">Leaf growth (px/it)</label></td>
+                                        <td><input id="input-leafGrowth" type="number" name="leafGrowth" value="0" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-marginalGrowth">Marginal growth</label></td>
+                                        <td><input id="input-marginalGrowth" name="marginalGrowth" type="checkbox"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-initialLeafLength">Initial leaf length (px)</label></td>
+                                        <td><input id="input-initialLeafLength" type="number" name="initialLeafLength" value="100" step="1" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-finalLeafLength">Final leaf length (px)</label></td>
+                                        <td><input id="input-finalLeafLength" type="number" name="finalLeafLength" value="900" step="1" min="0"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                        <td class="hide-on-mobile">
+                            <span>Leaf origin / contour (shift)</span><br>
+                            <canvas id="leafContourCanvasInput" width="256" height="256"></canvas>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <hr>
+            <table>
+                <tbody>
+                    <tr>
+                        <td><label for="input-backgroundColor">Background color</label></td>
+                        <td><input id="input-backgroundColor" name="backgroundColor" type="color" value="#1c1b22"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="input-veinColor">Vein color</label></td>
+                        <td><input id="input-veinColor" name="veinColor" type="color" value="#8b0404"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="input-veinWidthExponent">Vein width exponent</label></td>
+                        <td><input id="input-veinWidthExponent" name="veinWidthExponent" type="number" value="3" step="0.001" min="0"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="input-veinWidthBase">Vein width base (px)</label></td>
+                        <td><input id="input-veinWidthBase" name="veinWidthBase" type="number" value="1" step="0.001" min="0"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="input-veinWidthMax">Vein width max (px)</label></td>
+                        <td><input id="input-veinWidthMax" name="veinWidthMax" type="number" value="5" step="0.001" min="0"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="input-contourStroke">Draw leaf contour</label></td>
+                        <td><input id="input-contourStroke" name="contourStroke" type="checkbox"></td>
+                    </tr>
+                    <tr class="dependContourStroke">
+                        <td><label for="input-contourStrokeColor">Contour stroke color</label></td>
+                        <td><input id="input-contourStrokeColor" name="contourStrokeColor" type="color" value="#000000"></td>
+                    </tr>
+                    <tr class="dependContourStroke">
+                        <td><label for="input-contourStrokeWidth">Contour stroke width (px)</label></td>
+                        <td><input id="input-contourStrokeWidth" name="contourStrokeWidth" type="number" value="1" step="1" min="0"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="input-contourFill">Fill leaf contour</label></td>
+                        <td><input id="input-contourFill" name="contourFill" type="checkbox"></td>
+                    </tr>
+                    <tr class="dependContourFill">
+                        <td><label for="input-contourFillColor">Contour fill color</label></td>
+                        <td><input id="input-contourFillColor" name="contourFillColor" type="color" value="#cccccc"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="input-auxinSourceFill">Draw auxin sources</label></td>
+                        <td><input id="input-auxinSourceFill" name="auxinSourceFill" type="checkbox"></td>
+                    </tr>
+                    <tr class="dependAuxinSourceFill">
+                        <td><label for="input-auxinSourceColor">Auxin source color</label></td>
+                        <td><input id="input-auxinSourceColor" name="auxinSourceColor" type="color" value="#dc143c"></td>
+                    </tr>
+                    <tr class="dependAuxinSourceFill">
+                        <td><label for="input-auxinSourceRadius">Auxin source radius (px)</label></td>
+                        <td><input id="input-auxinSourceRadius" name="auxinSourceRadius" type="number" value="1" step="0.1" min="0"></td>
+                    </tr>
+
+                    <tr>
+                        <td><label for="input-veinWidthAnimated">Animate vein width</label></td>
+                        <td><input id="input-veinWidthAnimated" name="veinWidthAnimated" type="checkbox" checked></td>
+                    </tr>
+                    <tr class="dependVeinWidthAnimated">
+                        <td><label for="input-veinWidthXFrequency">Vein width animation spatial X frequency (/px)</label></td>
+                        <td><input id="input-veinWidthXFrequency" name="veinWidthXFrequency" type="number" value="0.013" step="0.001" min="0"></td>
+                    </tr>
+                    <tr class="dependVeinWidthAnimated">
+                        <td><label for="input-veinWidthYFrequency">Vein width animation spatial Y frequency (/px)</label></td>
+                        <td><input id="input-veinWidthYFrequency" name="veinWidthYFrequency" type="number" value="0.007" step="0.001" min="0"></td>
+                    </tr>
+                    <tr class="dependVeinWidthAnimated">
+                        <td><label for="input-veinWidthTimeFrequency">Vein width animation time frequency (Hz)</label></td>
+                        <td><input id="input-veinWidthTimeFrequency" name="veinWidthTimeFrequency" type="number" value="1" step="0.001" min="0"></td>
+                    </tr>
+                    <tr class="dependVeinWidthAnimated">
+                        <td><label for="input-veinWidthAmplitude">Vein width animation amplitude</label></td>
+                        <td><input id="input-veinWidthAmplitude" name="veinWidthAmplitude" type="number" value="0.5" step="0.001" min="0"></td>
+                    </tr>
+                </tbody>
+            </table>
+            <button type="submit">Start</button>
+        </form>
+    </dialog>
+    <script src="master.js"></script>
+</body>
+
+</html>
