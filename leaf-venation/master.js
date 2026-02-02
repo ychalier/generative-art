@@ -173,7 +173,8 @@ class LeafVenation {
         if (!("veinWidthBase"             in this.options)) this.options.veinWidthBase             = 1;
         if (!("veinWidthMax"              in this.options)) this.options.veinWidthMax              = 5;
         if (!("veinWidthAnimated"         in this.options)) this.options.veinWidthAnimated         = true;
-        if (!("veinWidthSpatialFrequency" in this.options)) this.options.veinWidthSpatialFrequency = 0.01;
+        if (!("veinWidthXFrequency"       in this.options)) this.options.veinWidthXFrequency       = 0.013;
+        if (!("veinWidthYFrequency"       in this.options)) this.options.veinWidthYFrequency       = 0.007;
         if (!("veinWidthTimeFrequency"    in this.options)) this.options.veinWidthTimeFrequency    = 1;
         if (!("veinWidthAmplitude"        in this.options)) this.options.veinWidthAmplitude        = 0.5;
         if (!("fancy"                     in this.options)) this.options.fancy                     = false;
@@ -422,7 +423,7 @@ class LeafVenation {
             const v = this.veinNodes[j];
             let veinWidth = Math.min(veinWidths[i], veinWidths[j]);
             if (this.options.veinWidthAnimated) {
-                veinWidth *= 1 + this.options.veinWidthAmplitude * Math.cos(((u.x + u.y) * this.options.veinWidthSpatialFrequency + elapsedSeconds * this.options.veinWidthTimeFrequency) * 2 * Math.PI);
+                veinWidth *= 1 + this.options.veinWidthAmplitude * Math.cos((u.x * this.options.veinWidthXFrequency + u.y * this.options.veinWidthYFrequency + elapsedSeconds * this.options.veinWidthTimeFrequency) * 2 * Math.PI);
             }
             mainContext.lineWidth = veinWidth;
             mainContext.beginPath();
@@ -639,7 +640,8 @@ function onOptionsFormSubmit(e) {
         veinWidthBase: parseFloat(formData.get("veinWidthBase")),
         veinWidthMax: parseFloat(formData.get("veinWidthMax")),
         veinWidthAnimated: formData.get("veinWidthAnimated") == "on",
-        veinWidthSpatialFrequency: parseFloat(formData.get("veinWidthSpatialFrequency")),
+        veinWidthXFrequency: parseFloat(formData.get("veinWidthXFrequency")),
+        veinWidthYFrequency: parseFloat(formData.get("veinWidthYFrequency")),
         veinWidthTimeFrequency: parseFloat(formData.get("veinWidthTimeFrequency")),
         veinWidthAmplitude: parseFloat(formData.get("veinWidthAmplitude")),
     });
