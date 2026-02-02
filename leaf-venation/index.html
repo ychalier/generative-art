@@ -46,6 +46,11 @@ tr:has(input[name=veinWidthAnimated]:checked) ~ tr.dependVeinWidthAnimated {
 #leafContourCanvasInput {
     border: 1px solid black;
 }
+@media (max-width: 800px) {
+    .hide-on-mobile {
+        display: none;
+    }
+}
     </style>
 </head>
 
@@ -53,6 +58,16 @@ tr:has(input[name=veinWidthAnimated]:checked) ~ tr.dependVeinWidthAnimated {
     <canvas id="mainCanvas"></canvas>
     <canvas id="leafContourCanvas"></canvas>
     <dialog id="startMenu">
+        <h1>Leaf Venation Pattern Generator</h1>
+        <p>
+            This tool generates leaf venation patterns using the algorithm
+            described in <i>Modeling and visualization of leaf venation patterns</i>
+            by Adam Runions, Martin Fuhrer, Brendan Lane, Pavol Federl,
+            Anne-Gaëlle Rolland-Lagan and Przemyslaw Prusinkiewicz.
+            Please refer to the paper for details about parameters.
+            <br>
+            This tool serves no purpose other than being fun, so please have fun with it.
+        </p>
         <form id="optionsForm">
             <input id="inputLeafContourPoints" name="leafContourPoints" hidden>
             <input id="inputLeafContourOrigin" name="leafContourOrigin" hidden>
@@ -102,7 +117,7 @@ tr:has(input[name=veinWidthAnimated]:checked) ~ tr.dependVeinWidthAnimated {
                                 </tbody>
                             </table>
                         </td>
-                        <td>
+                        <td class="hide-on-mobile">
                             <span>Leaf origin / contour (shift)</span><br>
                             <canvas id="leafContourCanvasInput" width="256" height="256"></canvas>
                         </td>
