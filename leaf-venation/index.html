@@ -24,7 +24,7 @@ input,
 button {
     font-family: inherit;
 }
-canvas {
+#mainCanvas {
     width: 100%;
     height: 100%;
 }
@@ -43,6 +43,9 @@ tr:has(input[name=auxinSourceFill]:checked) ~ tr.dependAuxinSourceFill,
 tr:has(input[name=veinWidthAnimated]:checked) ~ tr.dependVeinWidthAnimated {
     display: table-row;
 }
+#leafContourCanvasInput {
+    border: 1px solid black;
+}
     </style>
 </head>
 
@@ -51,45 +54,64 @@ tr:has(input[name=veinWidthAnimated]:checked) ~ tr.dependVeinWidthAnimated {
     <canvas id="leafContourCanvas"></canvas>
     <dialog id="startMenu">
         <form id="optionsForm">
+            <input id="inputLeafContourPoints" name="leafContourPoints" hidden>
+            <input id="inputLeafContourOrigin" name="leafContourOrigin" hidden>
+            <input id="inputOrigin" name="leafOrigin" hidden>
             <table>
                 <tbody>
                     <tr>
-                        <td><label for="input-birthDistanceAuxinSource">Birth distance from auxin sources (px)</label></td>
-                        <td><input id="input-birthDistanceAuxinSource" type="number" name="birthDistanceAuxinSource" value="10" step="0.001" min="0"></td>
+                        <td>
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td><label for="input-birthDistanceAuxinSource">Birth distance from auxin sources (px)</label></td>
+                                        <td><input id="input-birthDistanceAuxinSource" type="number" name="birthDistanceAuxinSource" value="10" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-birthDistanceVeinNode">Birth distance from vein nodes (px)</label></td>
+                                        <td><input id="input-birthDistanceVeinNode" type="number" name="birthDistanceVeinNode" value="10" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-killDistance">Kill distance (px)</label></td>
+                                        <td><input id="input-killDistance" type="number" name="killDistance" value="40" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-birthDensity">Birth density (/px²)</label></td>
+                                        <td><input id="input-birthDensity" type="number" name="birthDensity" value="0.000001" step="0.0000001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-veinLength">Vein length (px)</label></td>
+                                        <td><input id="input-veinLength" type="number" name="veinLength" value="1" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-leafGrowth">Leaf growth (px/it)</label></td>
+                                        <td><input id="input-leafGrowth" type="number" name="leafGrowth" value="0" step="0.001" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-marginalGrowth">Marginal growth</label></td>
+                                        <td><input id="input-marginalGrowth" name="marginalGrowth" type="checkbox"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-initialLeafLength">Initial leaf length (px)</label></td>
+                                        <td><input id="input-initialLeafLength" type="number" name="initialLeafLength" value="100" step="1" min="0"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><label for="input-finalLeafLength">Final leaf length (px)</label></td>
+                                        <td><input id="input-finalLeafLength" type="number" name="finalLeafLength" value="900" step="1" min="0"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                        <td>
+                            <span>Leaf origin / contour (shift)</span><br>
+                            <canvas id="leafContourCanvasInput" width="256" height="256"></canvas>
+                        </td>
                     </tr>
-                    <tr>
-                        <td><label for="input-birthDistanceVeinNode">Birth distance from vein nodes (px)</label></td>
-                        <td><input id="input-birthDistanceVeinNode" type="number" name="birthDistanceVeinNode" value="10" step="0.001" min="0"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="input-killDistance">Kill distance (px)</label></td>
-                        <td><input id="input-killDistance" type="number" name="killDistance" value="40" step="0.001" min="0"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="input-birthDensity">Birth density (/px²)</label></td>
-                        <td><input id="input-birthDensity" type="number" name="birthDensity" value="0.000001" step="0.0000001" min="0"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="input-veinLength">Vein length (px)</label></td>
-                        <td><input id="input-veinLength" type="number" name="veinLength" value="1" step="0.001" min="0"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="input-leafGrowth">Leaf growth (px/it)</label></td>
-                        <td><input id="input-leafGrowth" type="number" name="leafGrowth" value="0" step="0.001" min="0"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="input-marginalGrowth">Marginal growth</label></td>
-                        <td><input id="input-marginalGrowth" name="marginalGrowth" type="checkbox"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="input-initialLeafLength">Initial leaf length (px)</label></td>
-                        <td><input id="input-initialLeafLength" type="number" name="initialLeafLength" value="100" step="1" min="0"></td>
-                    </tr>
-                    <tr>
-                        <td><label for="input-finalLeafLength">Final leaf length (px)</label></td>
-                        <td><input id="input-finalLeafLength" type="number" name="finalLeafLength" value="900" step="1" min="0"></td>
-                    </tr>
-                    <td colspan="2"><hr></td>
+                </tbody>
+            </table>
+            <hr>
+            <table>
+                <tbody>
                     <tr>
                         <td><label for="input-backgroundColor">Background color</label></td>
                         <td><input id="input-backgroundColor" name="backgroundColor" type="color" value="#1c1b22"></td>

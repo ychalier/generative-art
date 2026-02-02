@@ -74,7 +74,7 @@ class LeafContour {
 
 class PointLeafContour extends LeafContour {
 
-    constructor(basePoints, baseOrigin, targetHeight, targetOrigin) {
+    constructor(basePoints, baseOrigin) {
         super();
         this.points = basePoints;
         this.baseOrigin = baseOrigin;
@@ -460,6 +460,155 @@ function frame() {
     requestAnimationFrame(frame)
 }
 
+function perpendicularDistance(a, b, c) {
+    // Computes the perpendicular distance of c to the line ab
+    // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+    return Math.abs((b.y - a.y) * c.x - (b.x - a.x) * c.y + b.x * a.y - b.y * a.x) / Math.sqrt(Math.pow(b.y - a.y, 2) + Math.pow(b.x - a.x, 2));
+}
+
+function simplifyLine(points, epsilon) {
+    // Implementation of the Ramer-Douglas-Pecker algorithm
+    // https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
+    if (points.length < 2) throw new Error("Not enough points!");
+    if (points.length == 2) return points;
+    const a = points[0];
+    const b = points[points.length - 1];
+    let farthestI = null;
+    let farthestDistance = null;
+    for (let i = 1; i < points.length - 1; i++) {
+        const c = points[i];
+        const distance = perpendicularDistance(a, b, c);
+        if (farthestI == null || distance > farthestDistance) {
+            farthestI = i;
+            farthestDistance = distance;
+        }
+    }
+    if (farthestDistance < epsilon) return [a, b];
+    const left = simplifyLine(points.slice(0, farthestI + 1), epsilon);
+    const right = simplifyLine(points.slice(farthestI), epsilon);
+    return left.concat(right.slice(1));
+}
+
+function parsePointList(text) {
+    const points = [];
+    for (const part of text.split(";")) {
+        if (part.length == 0) continue;
+        const [left, right] = part.split(",");
+        points.push(new Vec2(parseFloat(left), parseFloat(right)))
+    }
+    return points;
+}
+
+function formatPointList(points) {
+    let pointStrings = [];
+    for (const p of points) {
+        pointStrings.push(`${p.x},${p.y}`);
+    }
+    return pointStrings.join(";");
+}
+
+function setupLeafContourInput() {
+    const inputCanvas = leafContourCanvasInput;
+    const inputCanvasBounds = inputCanvas.getBoundingClientRect();
+    inputCanvas.width = inputCanvasBounds.width;
+    inputCanvas.height = inputCanvasBounds.height;
+    const inputContext = inputCanvas.getContext("2d");
+    var drawing = false;
+    const epsilon = 1.5;
+    var points = parsePointList(inputLeafContourPoints.value);
+    var relativeOrigin = new Vec2(0.5 * inputCanvasBounds.width, 0.5 * inputCanvasBounds.height);
+    if (inputLeafContourOrigin.value != "") {
+        relativeOrigin = parsePointList(inputLeafContourOrigin.value)[0];
+    }
+    var absoluteOrigin = new Vec2(0.5 * inputCanvasBounds.width, 0.5 * inputCanvasBounds.height);
+    if (inputOrigin.value != "") {
+        absoluteOrigin = parsePointList(inputOrigin.value)[0];
+        absoluteOrigin.x *= inputCanvasBounds.width;
+        absoluteOrigin.y *= inputCanvasBounds.height;
+    }
+    function getClickPoint(e) {
+        return new Vec2(e.clientX - inputCanvasBounds.left, e.clientY - inputCanvasBounds.top);
+    }
+    function drawInputCanvas() {
+        inputContext.clearRect(0, 0, inputCanvasBounds.width, inputCanvasBounds.height);
+        inputContext.fillStyle = "green";
+        inputContext.beginPath();
+        inputContext.arc(absoluteOrigin.x, absoluteOrigin.y, 3, 0, 2 * Math.PI);
+        inputContext.fill();
+        inputContext.fillStyle = "red";
+        inputContext.beginPath();
+        inputContext.arc(relativeOrigin.x, relativeOrigin.y, 2, 0, 2 * Math.PI);
+        inputContext.fill();
+        inputContext.strokeStyle = "black";
+        inputContext.lineWidth = 1;
+        if (points.length == 0) return;
+        inputContext.beginPath();
+        inputContext.moveTo(points[points.length - 1].x, points[points.length - 1].y);
+        for (const p of points.slice(1)) {
+            inputContext.lineTo(p.x, p.y);
+        }
+        inputContext.stroke();
+    }
+    function update() {
+        drawInputCanvas();
+        inputLeafContourPoints.value = formatPointList(points);
+        inputLeafContourOrigin.value = `${relativeOrigin.x},${relativeOrigin.y}`;
+        inputOrigin.value = `${absoluteOrigin.x/inputCanvasBounds.width},${absoluteOrigin.y/inputCanvasBounds.height}`;
+    }
+    inputCanvas.addEventListener("mousedown", (e) => {
+        if (e.button == 0) {
+            if (e.shiftKey) {
+                drawing = true;
+                points = [getClickPoint(e)];
+            } else {
+                absoluteOrigin = getClickPoint(e);
+            }
+        } else if (e.button == 2 && e.shiftKey) {
+            relativeOrigin = getClickPoint(e);
+        }
+        update();
+    });
+    inputCanvas.addEventListener("mousemove", (e) => {
+        if (drawing) {
+            points.push(getClickPoint(e));
+            update();
+        }
+    });
+    inputCanvas.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+    });
+    window.addEventListener("mouseup", (e) => {
+        if (drawing) {
+            drawing = false;
+            if (points.length < 2) {
+                points = [];
+            } else {
+                points = simplifyLine(points, epsilon);
+            }
+            update();
+        }
+    });
+    update();
+}
+
+function extractLeafContour(formData) {
+    const valuePoints = formData.get("leafContourPoints");
+    if (valuePoints == "") return new FullContour();
+    const valueOrigin = formData.get("leafContourOrigin");
+    return new LineContour(parsePointList(valuePoints), parsePointList(valueOrigin)[0]);
+}
+
+function extractLeafOrigin(formData) {
+    const value = formData.get("leafOrigin");
+    if (!value) {
+        return new Vec2(0.5 * width, 0.5 * height);
+    }
+    const p = parsePointList(value)[0];
+    p.x *= width;
+    p.y *= height;
+    return p;
+}
+
 function onOptionsFormSubmit(e) {
     e.preventDefault();
     startMenu.close();
@@ -474,8 +623,8 @@ function onOptionsFormSubmit(e) {
         leafGrowth: parseFloat(formData.get("leafGrowth")),
         initialLeafLength: parseFloat(formData.get("initialLeafLength")),
         finalLeafLength: parseFloat(formData.get("finalLeafLength")),
-        leafOrigin: new Vec2(0.5 * width, 0.95 * height),//TODO
-        leafContour: DEFAULT_LEAF_CONTOUR,//TODO
+        leafOrigin: extractLeafOrigin(formData),
+        leafContour: extractLeafContour(formData), // DEFAULT_LEAF_CONTOUR
         backgroundColor: formData.get("backgroundColor"),
         veinColor: formData.get("veinColor"),
         contourStroke: formData.get("contourStroke") == "on",
@@ -501,3 +650,4 @@ window.addEventListener("resize", onResize);
 optionsForm.addEventListener("submit", onOptionsFormSubmit);
 onResize();
 startMenu.showModal();
+setupLeafContourInput();
