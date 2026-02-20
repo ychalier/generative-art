@@ -13,16 +13,37 @@ let mouseDown = false;
 const focusedInputs = new Set();
 
 // Audio stuff
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let audioBuffer;
-const masterGain = audioCtx.createGain();
-const analyser = audioCtx.createAnalyser();
+var audioCtx;
+var masterGain;
+var analyser;
+var audioBuffer;
+var recordDest;
+var mediaRecorder;
+var recordedChunks = [];
+var isRecording = false;
+var recordingStart;
+var recordingInterval;
 
-masterGain.gain.value = 0.9;
-analyser.fftSize = 2048;
-analyser.smoothingTimeConstant = 1.0;
-masterGain.connect(analyser);
-analyser.connect(audioCtx.destination);
+function setupAudioContext() {
+if (audioCtx != undefined) return;
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.9;
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 1.0;
+
+    masterGain.connect(analyser);
+    analyser.connect(audioCtx.destination);
+
+    recordDest = audioCtx.createMediaStreamDestination();
+    masterGain.connect(audioCtx.destination);
+    masterGain.connect(recordDest);
+
+}
 
 function drawWaveform() {
     if (!audioBuffer) return;
@@ -93,6 +114,7 @@ function drawCursor() {
 }
 
 function togglePlayPause() {
+    setupAudioContext();
     if (!audioBuffer) return;
     if (isPlaying) {
         isPlaying = false;
@@ -252,6 +274,7 @@ setSizes();
 window.addEventListener("resize", setSizes);
 
 audioFile.addEventListener("input", async () => {
+    setupAudioContext();
     const file = audioFile.files[0];
     if (!file) return;
     audioFileLabel.textContent = file.name;
@@ -283,7 +306,12 @@ cursorCanvas.addEventListener("mouseup", (e) => {
 });
 
 audioFileDrop.addEventListener("click", (e) => {
-    if (audioBuffer) {
+    if (audioCtx == undefined) {
+        e.preventDefault();
+        setupAudioContext();
+        waveformCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+        waveformCtx.fillText("drop audio file here", waveformCanvas.width/2, waveformCanvas.height/2);
+    } else if (audioBuffer) {
         e.preventDefault();
     }
 });
@@ -364,4 +392,64 @@ cursorTimestamp.addEventListener("input", parseCursorTimestamp);
 waveformCtx.fillStyle = "white";
 waveformCtx.font = "11pt monospace";
 waveformCtx.textAlign = "center";
-waveformCtx.fillText("drop audio file here", waveformCanvas.width/2, waveformCanvas.height/2);
+waveformCtx.fillText("click to enable audio", waveformCanvas.width/2, waveformCanvas.height/2);
+
+function startRecording() {
+    recordedChunks = [];
+
+    mediaRecorder = new MediaRecorder(recordDest.stream, {mimeType: 'audio/webm'});
+
+    mediaRecorder.ondataavailable = function (e) {
+        if (e.data.size > 0) {
+            recordedChunks.push(e.data);
+        }
+    };
+
+    mediaRecorder.start();
+}
+
+function stopRecording() {
+    return new Promise(resolve => {
+        mediaRecorder.onstop = function () {
+            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `granular-synthesis-${Math.floor((new Date()).getTime())}.webm`;
+            document.body.appendChild(a);
+            a.click();
+
+            URL.revokeObjectURL(url);
+            resolve();
+        };
+        mediaRecorder.stop();
+    });
+}
+
+function updateRecordingTime() {
+    const now = new Date();
+    const elapsed = (now - recordingStart) / 1000;
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = Math.floor(elapsed - 60 * minutes);
+    recBtn.textContent = `🔴 ${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+recBtn.addEventListener("click", () => {
+    if (isRecording) {
+        recBtn.setAttribute("disabled", "true");
+        clearInterval(recordingInterval);
+        stopRecording().then(() => {
+            isRecording = false;
+            recBtn.textContent = "🔴";
+            recBtn.removeAttribute("disabled");
+        });
+    } else {
+        isRecording = true;
+        recordingStart = new Date();
+        recBtn.textContent = "🔴 00:00";
+        recordingInterval = setInterval(updateRecordingTime, 1000);
+        startRecording();
+    }
+});
