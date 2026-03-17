@@ -24,7 +24,7 @@ canvas {
     image-rendering: crisp-edges;
     cursor: crosshair;
 }
-#disclaimerBox {
+#myDisclaimerBox {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -72,11 +72,11 @@ input[type=file] {
 .hidden {
     display: none;
 }
-#disclaimerBox p {
+#myDisclaimerBox p {
     max-width: 230px;
     margin: 0;
 }
-#disclaimerBox table {
+#myDisclaimerBox table {
     margin-top: .4rem;
 }
     </style>
@@ -84,10 +84,9 @@ input[type=file] {
 
 <body>
     <canvas id="canvas"></canvas>
-    <div id="disclaimerBox">
-        <p>
-            Move the mouse around and scroll the wheel to change parameters.
-        </p>
+    <div id="myDisclaimerBox">
+        <p><b>Swarm</b></p>
+        <p>Load a high contrast video, move the mouse around and scroll the wheel to change parameters.</p>
         <form id="videoForm">
             <table>
                 <tbody>

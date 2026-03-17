@@ -329,7 +329,7 @@ videoInput.addEventListener("input", async () => {
 videoForm.addEventListener("submit", (event) => {
     event.preventDefault();
     if (videoInput.files && videoInput.files[0]) {
-        disclaimerBox.classList.add("hidden");
+        myDisclaimerBox.classList.add("hidden");
         setTimeout(() => {
             const file = videoInput.files[0];
             const url = URL.createObjectURL(file);
